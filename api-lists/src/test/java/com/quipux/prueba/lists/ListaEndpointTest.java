@@ -16,6 +16,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -143,6 +144,31 @@ class ListaEndpointTest {
                 .andExpect(jsonPath("$.canciones", hasSize(2)))
                 .andExpect(jsonPath("$.canciones[0].titulo").value("Bohemian Rhapsody"))
                 .andExpect(jsonPath("$.canciones[1].titulo").value("Another One Bites the Dust"));
+    }
+
+    @Test
+    void putCancionUpdatesSongAtIndex() throws Exception {
+        mockMvc.perform(post("/lists")
+                        .header("Authorization", bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validBody("EditarCancion")));
+
+        mockMvc.perform(put("/lists/EditarCancion/canciones/0")
+                        .header("Authorization", bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "titulo": "Don't Stop Me Now",
+                                  "artista": "Queen",
+                                  "album": "Jazz",
+                                  "anno": "1978",
+                                  "genero": "rock"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canciones", hasSize(1)))
+                .andExpect(jsonPath("$.canciones[0].titulo").value("Don't Stop Me Now"))
+                .andExpect(jsonPath("$.canciones[0].album").value("Jazz"));
     }
 
     @Test

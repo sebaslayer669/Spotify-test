@@ -52,23 +52,24 @@ public class ListaService {
 
     @Transactional
     public ListaDto addCancion(String listName, ListaDto.CancionDto cancionDto) {
-        if (cancionDto == null) {
-            throw new BadRequestException("La canción no es válida");
-        }
-        boolean empty =
-                isBlank(cancionDto.getTitulo())
-                        && isBlank(cancionDto.getArtista())
-                        && isBlank(cancionDto.getAlbum())
-                        && isBlank(cancionDto.getAnno())
-                        && isBlank(cancionDto.getGenero());
-        if (empty) {
-            throw new BadRequestException("Indica al menos título o artista");
-        }
+        requireValidCancion(cancionDto);
         ListaReproduccion entity = require(listName);
         entity.getCanciones().add(mapper.toCancion(cancionDto));
-        ListaDto updated = mapper.toDto(repository.save(entity));
-        events.publishEvent(new ListUpdatedEvent(listName));
-        return updated;
+        return persistUpdated(listName, entity);
+    }
+
+    @Transactional
+    public ListaDto updateCancion(String listName, int index, ListaDto.CancionDto cancionDto) {
+        requireValidCancion(cancionDto);
+        if (index < 0) {
+            throw new BadRequestException("Índice de canción inválido");
+        }
+        ListaReproduccion entity = require(listName);
+        if (index >= entity.getCanciones().size()) {
+            throw new NotFoundException("Canción no encontrada en la lista");
+        }
+        entity.getCanciones().set(index, mapper.toCancion(cancionDto));
+        return persistUpdated(listName, entity);
     }
 
     @Transactional
@@ -84,6 +85,27 @@ public class ListaService {
     public ListaReproduccion require(String listName) {
         return repository.findById(listName)
                 .orElseThrow(() -> new NotFoundException("Lista no encontrada: " + listName));
+    }
+
+    private ListaDto persistUpdated(String listName, ListaReproduccion entity) {
+        ListaDto updated = mapper.toDto(repository.save(entity));
+        events.publishEvent(new ListUpdatedEvent(listName));
+        return updated;
+    }
+
+    private static void requireValidCancion(ListaDto.CancionDto cancionDto) {
+        if (cancionDto == null) {
+            throw new BadRequestException("La canción no es válida");
+        }
+        boolean empty =
+                isBlank(cancionDto.getTitulo())
+                        && isBlank(cancionDto.getArtista())
+                        && isBlank(cancionDto.getAlbum())
+                        && isBlank(cancionDto.getAnno())
+                        && isBlank(cancionDto.getGenero());
+        if (empty) {
+            throw new BadRequestException("Indica al menos título o artista");
+        }
     }
 
     private static void validateNombre(String nombre) {

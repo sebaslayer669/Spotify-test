@@ -312,12 +312,30 @@ label {
 }
 
 .song {
-  display: grid;
-  gap: 0.15rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-radius: 12px;
   background: var(--surface);
   border: 1px solid var(--line);
+}
+
+.song.editing {
+  border-color: var(--accent, #1db954);
+}
+
+.song-main {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.song-edit {
+  flex-shrink: 0;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
 }
 
 .song strong {

@@ -122,6 +122,13 @@ export function addSong(listName, song) {
   });
 }
 
+export function updateSong(listName, index, song) {
+  return request(`/lists/${encodeURIComponent(listName)}/canciones/${index}`, {
+    method: 'PUT',
+    body: JSON.stringify(song)
+  });
+}
+
 export function getRecommendations(listName) {
   return request(`/lists/${encodeURIComponent(listName)}/recommendations`);
 }

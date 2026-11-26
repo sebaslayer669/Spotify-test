@@ -5,7 +5,8 @@ import {
   deleteList,
   getList,
   getRecommendations,
-  listLists
+  listLists,
+  updateSong
 } from '../api';
 import {
   mergeLists,
@@ -14,6 +15,16 @@ import {
   upsertCachedList
 } from '../listCache';
 
+function blankSong() {
+  return {
+    titulo: '',
+    artista: '',
+    album: '',
+    anno: '',
+    genero: ''
+  };
+}
+
 export function usePlaylists() {
   const lists = ref([]);
   const selectedName = ref('');
@@ -21,6 +32,7 @@ export function usePlaylists() {
   const recommendations = ref(null);
   const loading = ref(false);
   const error = ref('');
+  const editingIndex = ref(null);
 
   const form = reactive({
     nombre: '',
@@ -32,15 +44,10 @@ export function usePlaylists() {
     genero: ''
   });
 
-  const songForm = reactive({
-    titulo: '',
-    artista: '',
-    album: '',
-    anno: '',
-    genero: ''
-  });
+  const songForm = reactive(blankSong());
 
   const songCount = computed(() => selected.value?.canciones?.length || 0);
+  const isEditingSong = computed(() => editingIndex.value !== null);
 
   function resetForm() {
     form.nombre = '';
@@ -53,11 +60,8 @@ export function usePlaylists() {
   }
 
   function resetSongForm() {
-    songForm.titulo = '';
-    songForm.artista = '';
-    songForm.album = '';
-    songForm.anno = '';
-    songForm.genero = '';
+    Object.assign(songForm, blankSong());
+    editingIndex.value = null;
   }
 
   function clearSelection() {
@@ -66,6 +70,7 @@ export function usePlaylists() {
     selected.value = null;
     recommendations.value = null;
     error.value = '';
+    resetSongForm();
   }
 
   async function refreshLists() {
@@ -80,6 +85,7 @@ export function usePlaylists() {
     error.value = '';
     recommendations.value = null;
     selectedName.value = name;
+    resetSongForm();
     loading.value = true;
     try {
       let apiList = null;
@@ -133,6 +139,7 @@ export function usePlaylists() {
       selectedName.value = created.nombre;
       selected.value = created;
       recommendations.value = null;
+      resetSongForm();
     } catch (e) {
       error.value = e.message;
     } finally {
@@ -151,6 +158,7 @@ export function usePlaylists() {
         selectedName.value = '';
         selected.value = null;
         recommendations.value = null;
+        resetSongForm();
       }
       await refreshLists();
     } catch (e) {
@@ -174,25 +182,74 @@ export function usePlaylists() {
     }
   }
 
+  function startEditSong(index) {
+    const song = selected.value?.canciones?.[index];
+    if (!song) return;
+    editingIndex.value = index;
+    Object.assign(songForm, {
+      titulo: song.titulo || '',
+      artista: song.artista || '',
+      album: song.album || '',
+      anno: song.anno || '',
+      genero: song.genero || ''
+    });
+    error.value = '';
+  }
+
+  function cancelEditSong() {
+    resetSongForm();
+  }
+
+  function songPayload() {
+    return {
+      titulo: songForm.titulo.trim(),
+      artista: songForm.artista.trim(),
+      album: songForm.album.trim(),
+      anno: songForm.anno.trim(),
+      genero: songForm.genero.trim()
+    };
+  }
+
   async function addSongToSelected() {
     if (!selectedName.value) {
       error.value = 'Selecciona una lista primero';
       return;
     }
     error.value = '';
-    if (!songForm.titulo.trim() && !songForm.artista.trim()) {
+    const payload = songPayload();
+    if (!payload.titulo && !payload.artista) {
       error.value = 'Indica al menos título o artista';
       return;
     }
     loading.value = true;
     try {
-      const updated = await addSong(selectedName.value, {
-        titulo: songForm.titulo.trim(),
-        artista: songForm.artista.trim(),
-        album: songForm.album.trim(),
-        anno: songForm.anno.trim(),
-        genero: songForm.genero.trim()
-      });
+      const updated = await addSong(selectedName.value, payload);
+      upsertCachedList(updated);
+      selected.value = updated;
+      recommendations.value = null;
+      resetSongForm();
+      await refreshLists();
+    } catch (e) {
+      error.value = e.message;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function saveEditedSong() {
+    if (!selectedName.value || editingIndex.value === null) {
+      error.value = 'Selecciona una canción para editar';
+      return;
+    }
+    error.value = '';
+    const payload = songPayload();
+    if (!payload.titulo && !payload.artista) {
+      error.value = 'Indica al menos título o artista';
+      return;
+    }
+    loading.value = true;
+    try {
+      const updated = await updateSong(selectedName.value, editingIndex.value, payload);
       upsertCachedList(updated);
       selected.value = updated;
       recommendations.value = null;
@@ -215,12 +272,17 @@ export function usePlaylists() {
     form,
     songForm,
     songCount,
+    editingIndex,
+    isEditingSong,
     clearSelection,
     refreshLists,
     selectList,
     create,
     remove,
     recommend,
-    addSongToSelected
+    startEditSong,
+    cancelEditSong,
+    addSongToSelected,
+    saveEditedSong
   };
 }

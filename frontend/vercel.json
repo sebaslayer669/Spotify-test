@@ -2,6 +2,7 @@
   "rewrites": [
     { "source": "/auth/login", "destination": "/api/gateway?op=login" },
     { "source": "/lists/:listName/recommendations", "destination": "/api/gateway?op=recommendations&listName=:listName" },
+    { "source": "/lists/:listName/canciones/:index", "destination": "/api/gateway?op=updateCancion&listName=:listName&index=:index" },
     { "source": "/lists/:listName/canciones", "destination": "/api/gateway?op=addCancion&listName=:listName" },
     { "source": "/lists/:listName", "destination": "/api/gateway?op=list&listName=:listName" },
     { "source": "/lists", "destination": "/api/gateway?op=lists" },

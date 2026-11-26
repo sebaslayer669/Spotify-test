@@ -67,6 +67,21 @@
       }
     },
     {
+      "name": "Lists — update song",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titulo\": \"Don't Stop Me Now\",\n  \"artista\": \"Queen\",\n  \"album\": \"Jazz\",\n  \"anno\": \"1978\",\n  \"genero\": \"rock\"\n}"
+        },
+        "url": "{{baseUrl}}/lists/Lista 1/canciones/0"
+      }
+    },
+    {
       "name": "Lists — recommendations (IA)",
       "request": {
         "method": "GET",

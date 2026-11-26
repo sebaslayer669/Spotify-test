@@ -139,6 +139,72 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (op === 'updateCancion') {
+    if (req.method !== 'PUT') {
+      sendJson(res, 405, { status: 405, error: 'Method Not Allowed', message: 'Usa PUT' });
+      return;
+    }
+    const listName = req.query.listName;
+    const index = Number.parseInt(String(req.query.index ?? ''), 10);
+    const lista = store.get(listName);
+    if (!lista) {
+      sendJson(res, 404, {
+        status: 404,
+        error: 'Not Found',
+        message: `Lista no encontrada: ${listName}`
+      });
+      return;
+    }
+    if (!Number.isInteger(index) || index < 0) {
+      sendJson(res, 400, {
+        status: 400,
+        error: 'Bad Request',
+        message: 'Índice de canción inválido'
+      });
+      return;
+    }
+    const canciones = Array.isArray(lista.canciones) ? [...lista.canciones] : [];
+    if (index >= canciones.length) {
+      sendJson(res, 404, {
+        status: 404,
+        error: 'Not Found',
+        message: 'Canción no encontrada en la lista'
+      });
+      return;
+    }
+    try {
+      const body = await readJson(req);
+      const empty =
+        !(body?.titulo || '').toString().trim() &&
+        !(body?.artista || '').toString().trim() &&
+        !(body?.album || '').toString().trim() &&
+        !(body?.anno || '').toString().trim() &&
+        !(body?.genero || '').toString().trim();
+      if (empty) {
+        sendJson(res, 400, {
+          status: 400,
+          error: 'Bad Request',
+          message: 'Indica al menos título o artista'
+        });
+        return;
+      }
+      canciones[index] = {
+        titulo: (body.titulo || '').toString(),
+        artista: (body.artista || '').toString(),
+        album: (body.album || '').toString(),
+        anno: (body.anno || '').toString(),
+        genero: (body.genero || '').toString()
+      };
+      const updated = { ...lista, canciones };
+      store.set(listName, updated);
+      persistStore();
+      sendJson(res, 200, updated);
+    } catch {
+      sendJson(res, 400, { status: 400, error: 'Bad Request', message: 'JSON inválido' });
+    }
+    return;
+  }
+
   if (op === 'addCancion') {
     if (req.method !== 'POST') {
       sendJson(res, 405, { status: 405, error: 'Method Not Allowed', message: 'Usa POST' });

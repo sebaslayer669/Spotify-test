@@ -89,17 +89,33 @@ onMounted(async () => {
           </div>
 
           <div class="songs">
-            <div v-for="(song, i) in playlists.selected.value.canciones || []" :key="i" class="song">
-              <strong>{{ song.titulo || '—' }}</strong>
-              <span class="sub">
-                {{ [song.artista, song.album, song.genero, song.anno].filter(Boolean).join(' · ') }}
-              </span>
+            <div
+              v-for="(song, i) in playlists.selected.value.canciones || []"
+              :key="i"
+              class="song"
+              :class="{ editing: playlists.editingIndex.value === i }"
+            >
+              <div class="song-main">
+                <strong>{{ song.titulo || '—' }}</strong>
+                <span class="sub">
+                  {{ [song.artista, song.album, song.genero, song.anno].filter(Boolean).join(' · ') }}
+                </span>
+              </div>
+              <button
+                class="ghost song-edit"
+                :disabled="playlists.loading.value"
+                @click="playlists.startEditSong(i)"
+              >
+                Editar
+              </button>
             </div>
             <p v-if="!playlists.songCount.value" class="empty">Lista vacía</p>
           </div>
 
           <div class="divider"></div>
-          <p class="section-label">Agregar canción</p>
+          <p class="section-label">
+            {{ playlists.isEditingSong.value ? 'Editar canción' : 'Agregar canción' }}
+          </p>
           <div class="form-stack" style="padding: 0">
             <div class="fields-2">
               <label>Título <input v-model="playlists.songForm.titulo" /></label>
@@ -109,7 +125,23 @@ onMounted(async () => {
               <label>Género <input v-model="playlists.songForm.genero" /></label>
             </div>
             <div class="actions">
-              <button :disabled="playlists.loading.value" @click="playlists.addSongToSelected()">
+              <template v-if="playlists.isEditingSong.value">
+                <button :disabled="playlists.loading.value" @click="playlists.saveEditedSong()">
+                  Guardar cambios
+                </button>
+                <button
+                  class="secondary"
+                  :disabled="playlists.loading.value"
+                  @click="playlists.cancelEditSong()"
+                >
+                  Cancelar
+                </button>
+              </template>
+              <button
+                v-else
+                :disabled="playlists.loading.value"
+                @click="playlists.addSongToSelected()"
+              >
                 Agregar a la lista
               </button>
             </div>
