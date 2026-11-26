@@ -11,6 +11,13 @@ import {
   login as apiLogin,
   setToken
 } from './api';
+import {
+  clearListCache,
+  mergeLists,
+  removeCachedList,
+  resolveList,
+  upsertCachedList
+} from './listCache';
 
 const token = ref(getToken());
 const username = ref('demo');
@@ -51,6 +58,7 @@ async function handleLogin() {
 
 function logout() {
   clearToken();
+  clearListCache();
   token.value = null;
   lists.value = [];
   selected.value = null;
@@ -60,7 +68,11 @@ function logout() {
 }
 
 async function refreshLists() {
-  lists.value = await listLists();
+  const apiLists = await listLists();
+  lists.value = mergeLists(apiLists);
+  for (const item of lists.value) {
+    upsertCachedList(item);
+  }
 }
 
 async function selectList(name) {
@@ -69,7 +81,20 @@ async function selectList(name) {
   selectedName.value = name;
   loading.value = true;
   try {
-    selected.value = await getList(name);
+    let apiList = null;
+    try {
+      apiList = await getList(name);
+    } catch (e) {
+      if (e.status !== 404) throw e;
+    }
+    const resolved = resolveList(apiList, name);
+    if (!resolved) {
+      error.value = `Lista no encontrada: ${name}`;
+      selected.value = null;
+      return;
+    }
+    selected.value = resolved;
+    upsertCachedList(resolved);
   } catch (e) {
     error.value = e.message;
     selected.value = null;
@@ -111,9 +136,12 @@ async function handleCreate() {
       descripcion: form.descripcion.trim(),
       canciones
     });
+    upsertCachedList(created);
     resetForm();
     await refreshLists();
-    await selectList(created.nombre);
+    selectedName.value = created.nombre;
+    selected.value = created;
+    recommendations.value = null;
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -127,6 +155,7 @@ async function handleDelete(name) {
   loading.value = true;
   try {
     await deleteList(name);
+    removeCachedList(name);
     if (selectedName.value === name) {
       selectedName.value = '';
       selected.value = null;
@@ -168,7 +197,7 @@ onMounted(async () => {
 <template>
   <div v-if="!isLoggedIn" class="login-wrap">
     <section class="login-card">
-      <h1>Quipux <span>Lists</span></h1>
+      <h1>Spotify <span>List</span></h1>
       <label>
         Usuario
         <input v-model="username" autocomplete="username" @keyup.enter="handleLogin" />
@@ -180,7 +209,7 @@ onMounted(async () => {
 
   <div v-else class="app">
     <header class="topbar">
-      <h1 class="logo">Quipux <span>Lists</span></h1>
+      <h1 class="logo">Spotify <span>List</span></h1>
       <button class="secondary" @click="logout">Salir</button>
     </header>
 
