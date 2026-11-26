@@ -1,6 +1,8 @@
 package com.quipux.prueba.lists;
 
 import com.quipux.prueba.lists.domain.ListaReproduccion;
+import com.quipux.prueba.lists.event.ListDeletedEvent;
+import com.quipux.prueba.lists.mapper.ListaMapper;
 import com.quipux.prueba.lists.repo.ListaReproduccionRepository;
 import com.quipux.prueba.lists.service.ListaService;
 import com.quipux.prueba.lists.web.ListaDto;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,11 +32,14 @@ class ListaServiceTest {
     @Mock
     private ListaReproduccionRepository repository;
 
+    @Mock
+    private ApplicationEventPublisher events;
+
     private ListaService listaService;
 
     @BeforeEach
     void setUp() {
-        listaService = new ListaService(repository);
+        listaService = new ListaService(repository, new ListaMapper(), events);
     }
 
     @Test
@@ -112,12 +118,15 @@ class ListaServiceTest {
     }
 
     @Test
-    void deleteRemovesExistingLista() {
+    void deleteRemovesExistingListaAndPublishesEvent() {
         when(repository.existsById("Rock")).thenReturn(true);
 
         listaService.delete("Rock");
 
         verify(repository).deleteById("Rock");
+        ArgumentCaptor<ListDeletedEvent> eventCaptor = ArgumentCaptor.forClass(ListDeletedEvent.class);
+        verify(events).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().listName()).isEqualTo("Rock");
     }
 
     @Test
@@ -127,6 +136,7 @@ class ListaServiceTest {
         assertThatThrownBy(() -> listaService.delete("x"))
                 .isInstanceOf(NotFoundException.class);
         verify(repository, never()).deleteById(any());
+        verify(events, never()).publishEvent(any());
     }
 
     private static ListaDto sampleDto(String nombre) {

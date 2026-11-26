@@ -1,11 +1,13 @@
 package com.quipux.prueba.lists.service;
 
-import com.quipux.prueba.lists.domain.Cancion;
 import com.quipux.prueba.lists.domain.ListaReproduccion;
+import com.quipux.prueba.lists.event.ListDeletedEvent;
+import com.quipux.prueba.lists.mapper.ListaMapper;
 import com.quipux.prueba.lists.repo.ListaReproduccionRepository;
 import com.quipux.prueba.lists.web.ListaDto;
 import com.quipux.prueba.shared.exception.BadRequestException;
 import com.quipux.prueba.shared.exception.NotFoundException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,31 +17,36 @@ import java.util.List;
 public class ListaService {
 
     private final ListaReproduccionRepository repository;
+    private final ListaMapper mapper;
+    private final ApplicationEventPublisher events;
 
-    public ListaService(ListaReproduccionRepository repository) {
+    public ListaService(
+            ListaReproduccionRepository repository,
+            ListaMapper mapper,
+            ApplicationEventPublisher events
+    ) {
         this.repository = repository;
+        this.mapper = mapper;
+        this.events = events;
     }
 
     @Transactional
     public ListaDto create(ListaDto dto) {
-        if (dto.getNombre() == null || dto.getNombre().isBlank()) {
-            throw new BadRequestException("El nombre de la lista no es válido");
-        }
+        validateNombre(dto.getNombre());
         if (repository.existsById(dto.getNombre())) {
             throw new BadRequestException("Ya existe una lista con ese nombre");
         }
-        ListaReproduccion entity = toEntity(dto);
-        return toDto(repository.save(entity));
+        return mapper.toDto(repository.save(mapper.toEntity(dto)));
     }
 
     @Transactional(readOnly = true)
     public List<ListaDto> findAll() {
-        return repository.findAll().stream().map(this::toDto).toList();
+        return repository.findAll().stream().map(mapper::toDto).toList();
     }
 
     @Transactional(readOnly = true)
     public ListaDto findByName(String listName) {
-        return toDto(require(listName));
+        return mapper.toDto(require(listName));
     }
 
     @Transactional
@@ -48,6 +55,7 @@ public class ListaService {
             throw new NotFoundException("Lista no encontrada: " + listName);
         }
         repository.deleteById(listName);
+        events.publishEvent(new ListDeletedEvent(listName));
     }
 
     @Transactional(readOnly = true)
@@ -56,35 +64,9 @@ public class ListaService {
                 .orElseThrow(() -> new NotFoundException("Lista no encontrada: " + listName));
     }
 
-    private ListaReproduccion toEntity(ListaDto dto) {
-        ListaReproduccion entity = new ListaReproduccion();
-        entity.setNombre(dto.getNombre());
-        entity.setDescripcion(dto.getDescripcion());
-        entity.setCanciones(dto.getCanciones().stream().map(c -> {
-            Cancion cancion = new Cancion();
-            cancion.setTitulo(c.getTitulo());
-            cancion.setArtista(c.getArtista());
-            cancion.setAlbum(c.getAlbum());
-            cancion.setAnno(c.getAnno());
-            cancion.setGenero(c.getGenero());
-            return cancion;
-        }).toList());
-        return entity;
-    }
-
-    private ListaDto toDto(ListaReproduccion entity) {
-        ListaDto dto = new ListaDto();
-        dto.setNombre(entity.getNombre());
-        dto.setDescripcion(entity.getDescripcion());
-        dto.setCanciones(entity.getCanciones().stream().map(c -> {
-            ListaDto.CancionDto cd = new ListaDto.CancionDto();
-            cd.setTitulo(c.getTitulo());
-            cd.setArtista(c.getArtista());
-            cd.setAlbum(c.getAlbum());
-            cd.setAnno(c.getAnno());
-            cd.setGenero(c.getGenero());
-            return cd;
-        }).toList());
-        return dto;
+    private static void validateNombre(String nombre) {
+        if (nombre == null || nombre.isBlank()) {
+            throw new BadRequestException("El nombre de la lista no es válido");
+        }
     }
 }

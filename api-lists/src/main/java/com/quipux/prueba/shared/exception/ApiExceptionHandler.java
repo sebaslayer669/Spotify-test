@@ -8,39 +8,28 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.Instant;
-import java.util.Map;
-
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Map<String, Object>> notFound(NotFoundException ex) {
-        return error(HttpStatus.NOT_FOUND, ex.getMessage());
+    public ResponseEntity<ApiError> notFound(NotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.of(HttpStatus.NOT_FOUND, ex.getMessage()));
     }
 
     @ExceptionHandler({BadRequestException.class, MethodArgumentNotValidException.class})
-    public ResponseEntity<Map<String, Object>> badRequest(Exception ex) {
+    public ResponseEntity<ApiError> badRequest(Exception ex) {
         String message = ex instanceof MethodArgumentNotValidException manv
                 ? manv.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(err -> err.getField() + ": " + err.getDefaultMessage())
                 .orElse("Solicitud inválida")
                 : ex.getMessage();
-        return error(HttpStatus.BAD_REQUEST, message);
+        return ResponseEntity.badRequest().body(ApiError.of(HttpStatus.BAD_REQUEST, message));
     }
 
     @ExceptionHandler({AiTimeoutException.class, AiProviderException.class})
-    public ResponseEntity<Map<String, Object>> aiUnavailable(RuntimeException ex) {
-        return error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
-    }
-
-    private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
-        return ResponseEntity.status(status).body(Map.of(
-                "timestamp", Instant.now().toString(),
-                "status", status.value(),
-                "error", status.getReasonPhrase(),
-                "message", message
-        ));
+    public ResponseEntity<ApiError> aiUnavailable(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiError.of(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage()));
     }
 }

@@ -1,275 +1,117 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
-import {
-  clearToken,
-  createList,
-  deleteList,
-  getList,
-  getRecommendations,
-  getToken,
-  listLists,
-  login as apiLogin,
-  setToken
-} from './api';
-import {
-  clearListCache,
-  mergeLists,
-  removeCachedList,
-  resolveList,
-  upsertCachedList
-} from './listCache';
+import { onMounted, watch } from 'vue';
+import { useAuth } from './composables/useAuth';
+import { usePlaylists } from './composables/usePlaylists';
 
-const token = ref(getToken());
-const username = ref('demo');
-const lists = ref([]);
-const selectedName = ref('');
-const selected = ref(null);
-const recommendations = ref(null);
-const loading = ref(false);
-const error = ref('');
+const auth = useAuth();
+const playlists = usePlaylists();
 
-const form = reactive({
-  nombre: '',
-  descripcion: '',
-  titulo: '',
-  artista: '',
-  album: '',
-  anno: '',
-  genero: ''
-});
-
-const isLoggedIn = computed(() => Boolean(token.value));
-const songCount = computed(() => selected.value?.canciones?.length || 0);
+watch(
+  () => auth.isLoggedIn.value,
+  (logged) => {
+    if (!logged) playlists.clearSelection();
+  }
+);
 
 async function handleLogin() {
-  error.value = '';
-  loading.value = true;
-  try {
-    const data = await apiLogin(username.value.trim() || 'demo');
-    setToken(data.accessToken);
-    token.value = data.accessToken;
-    await refreshLists();
-  } catch (e) {
-    error.value = typeof e?.message === 'string' ? e.message : 'No se pudo iniciar sesión';
-  } finally {
-    loading.value = false;
-  }
-}
-
-function logout() {
-  clearToken();
-  clearListCache();
-  token.value = null;
-  lists.value = [];
-  selected.value = null;
-  selectedName.value = '';
-  recommendations.value = null;
-  error.value = '';
-}
-
-async function refreshLists() {
-  const apiLists = await listLists();
-  lists.value = mergeLists(apiLists);
-  for (const item of lists.value) {
-    upsertCachedList(item);
-  }
-}
-
-async function selectList(name) {
-  error.value = '';
-  recommendations.value = null;
-  selectedName.value = name;
-  loading.value = true;
-  try {
-    let apiList = null;
+  const ok = await auth.login();
+  if (ok) {
     try {
-      apiList = await getList(name);
+      await playlists.refreshLists();
     } catch (e) {
-      if (e.status !== 404) throw e;
+      if (e.status === 401) auth.logout();
+      else playlists.error.value = e.message;
     }
-    const resolved = resolveList(apiList, name);
-    if (!resolved) {
-      error.value = `Lista no encontrada: ${name}`;
-      selected.value = null;
-      return;
-    }
-    selected.value = resolved;
-    upsertCachedList(resolved);
-  } catch (e) {
-    error.value = e.message;
-    selected.value = null;
-  } finally {
-    loading.value = false;
-  }
-}
-
-function resetForm() {
-  form.nombre = '';
-  form.descripcion = '';
-  form.titulo = '';
-  form.artista = '';
-  form.album = '';
-  form.anno = '';
-  form.genero = '';
-}
-
-async function handleCreate() {
-  error.value = '';
-  if (!form.nombre.trim()) {
-    error.value = 'Indica un nombre para la lista';
-    return;
-  }
-  loading.value = true;
-  try {
-    const canciones = [];
-    if (form.titulo.trim() || form.artista.trim()) {
-      canciones.push({
-        titulo: form.titulo.trim(),
-        artista: form.artista.trim(),
-        album: form.album.trim(),
-        anno: form.anno.trim(),
-        genero: form.genero.trim()
-      });
-    }
-    const created = await createList({
-      nombre: form.nombre.trim(),
-      descripcion: form.descripcion.trim(),
-      canciones
-    });
-    upsertCachedList(created);
-    resetForm();
-    await refreshLists();
-    selectedName.value = created.nombre;
-    selected.value = created;
-    recommendations.value = null;
-  } catch (e) {
-    error.value = e.message;
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function handleDelete(name) {
-  error.value = '';
-  if (!confirm(`¿Eliminar “${name}”?`)) return;
-  loading.value = true;
-  try {
-    await deleteList(name);
-    removeCachedList(name);
-    if (selectedName.value === name) {
-      selectedName.value = '';
-      selected.value = null;
-      recommendations.value = null;
-    }
-    await refreshLists();
-  } catch (e) {
-    error.value = e.message;
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function handleRecommendations() {
-  if (!selectedName.value) return;
-  error.value = '';
-  loading.value = true;
-  try {
-    recommendations.value = await getRecommendations(selectedName.value);
-  } catch (e) {
-    recommendations.value = null;
-    error.value = e.message;
-  } finally {
-    loading.value = false;
   }
 }
 
 onMounted(async () => {
-  if (!token.value) return;
+  if (!auth.isLoggedIn.value) return;
   try {
-    await refreshLists();
+    await playlists.refreshLists();
   } catch (e) {
-    if (e.status === 401) logout();
-    else error.value = e.message;
+    if (e.status === 401) auth.logout();
+    else playlists.error.value = e.message;
   }
 });
 </script>
 
 <template>
-  <div v-if="!isLoggedIn" class="login-wrap">
+  <div v-if="!auth.isLoggedIn.value" class="login-wrap">
     <section class="login-card">
       <h1>Spotify <span>List</span></h1>
       <label>
         Usuario
-        <input v-model="username" autocomplete="username" @keyup.enter="handleLogin" />
+        <input v-model="auth.username.value" autocomplete="username" @keyup.enter="handleLogin" />
       </label>
-      <button :disabled="loading" @click="handleLogin">Entrar</button>
-      <p v-if="error" class="error-banner" style="margin: 0">{{ error }}</p>
+      <button :disabled="auth.loading.value" @click="handleLogin">Entrar</button>
+      <p v-if="auth.error.value" class="error-banner" style="margin: 0">{{ auth.error.value }}</p>
     </section>
   </div>
 
   <div v-else class="app">
     <header class="topbar">
       <h1 class="logo">Spotify <span>List</span></h1>
-      <button class="secondary" @click="logout">Salir</button>
+      <button class="secondary" @click="auth.logout()">Salir</button>
     </header>
 
-    <p v-if="error" class="error-banner">{{ error }}</p>
+    <p v-if="playlists.error.value" class="error-banner">{{ playlists.error.value }}</p>
 
     <div class="workspace">
       <aside class="column">
         <div class="column-head">
           <h2>Listas</h2>
-          <button class="ghost" :disabled="loading" @click="refreshLists">↻</button>
+          <button class="ghost" :disabled="playlists.loading.value" @click="playlists.refreshLists()">↻</button>
         </div>
         <ul class="playlist-list">
           <li
-            v-for="item in lists"
+            v-for="item in playlists.lists.value"
             :key="item.nombre"
             class="playlist-item"
-            :class="{ active: item.nombre === selectedName }"
+            :class="{ active: item.nombre === playlists.selectedName.value }"
           >
-            <button class="select" @click="selectList(item.nombre)">{{ item.nombre }}</button>
-            <button class="danger-ghost" :disabled="loading" @click="handleDelete(item.nombre)">✕</button>
+            <button class="select" @click="playlists.selectList(item.nombre)">{{ item.nombre }}</button>
+            <button class="danger-ghost" :disabled="playlists.loading.value" @click="playlists.remove(item.nombre)">✕</button>
           </li>
         </ul>
-        <p v-if="!lists.length" class="empty">Sin listas</p>
+        <p v-if="!playlists.lists.value.length" class="empty">Sin listas</p>
       </aside>
 
       <main class="column detail">
-        <template v-if="selected">
+        <template v-if="playlists.selected.value">
           <div class="detail-header">
-            <h1>{{ selected.nombre }}</h1>
-            <p v-if="selected.descripcion">{{ selected.descripcion }}</p>
+            <h1>{{ playlists.selected.value.nombre }}</h1>
+            <p v-if="playlists.selected.value.descripcion">{{ playlists.selected.value.descripcion }}</p>
           </div>
           <div class="meta-row">
-            <span class="badge">{{ songCount }} canciones</span>
-            <button :disabled="loading" @click="handleRecommendations">Recomendar</button>
+            <span class="badge">{{ playlists.songCount.value }} canciones</span>
+            <button :disabled="playlists.loading.value" @click="playlists.recommend()">Recomendar</button>
           </div>
 
           <div class="songs">
-            <div v-for="(song, i) in selected.canciones || []" :key="i" class="song">
+            <div v-for="(song, i) in playlists.selected.value.canciones || []" :key="i" class="song">
               <strong>{{ song.titulo || '—' }}</strong>
               <span class="sub">
                 {{ [song.artista, song.album, song.genero, song.anno].filter(Boolean).join(' · ') }}
               </span>
             </div>
-            <p v-if="!songCount" class="empty">Lista vacía</p>
+            <p v-if="!playlists.songCount.value" class="empty">Lista vacía</p>
           </div>
 
-          <template v-if="recommendations">
+          <template v-if="playlists.recommendations.value">
             <div class="divider"></div>
             <div class="meta-row">
               <h2 class="section-label" style="margin-right: auto">Recomendaciones</h2>
               <span
                 class="badge"
-                :class="recommendations.source === 'FALLBACK' ? 'fallback' : 'ai'"
+                :class="playlists.recommendations.value.source === 'FALLBACK' ? 'fallback' : 'ai'"
               >
-                {{ recommendations.source === 'FALLBACK' ? 'Fallback' : 'IA' }}
+                {{ playlists.recommendations.value.source === 'FALLBACK' ? 'Fallback' : 'IA' }}
               </span>
             </div>
             <div class="songs">
               <div
-                v-for="(rec, i) in recommendations.recommendations || []"
+                v-for="(rec, i) in playlists.recommendations.value.recommendations || []"
                 :key="i"
                 class="song"
               >
@@ -293,23 +135,23 @@ onMounted(async () => {
         <div class="form-stack">
           <label>
             Nombre
-            <input v-model="form.nombre" />
+            <input v-model="playlists.form.nombre" />
           </label>
           <label>
             Descripción
-            <textarea v-model="form.descripcion" rows="2" />
+            <textarea v-model="playlists.form.descripcion" rows="2" />
           </label>
           <div class="divider"></div>
           <p class="section-label">Canción</p>
           <div class="fields-2">
-            <label>Título <input v-model="form.titulo" /></label>
-            <label>Artista <input v-model="form.artista" /></label>
-            <label>Álbum <input v-model="form.album" /></label>
-            <label>Año <input v-model="form.anno" /></label>
-            <label>Género <input v-model="form.genero" /></label>
+            <label>Título <input v-model="playlists.form.titulo" /></label>
+            <label>Artista <input v-model="playlists.form.artista" /></label>
+            <label>Álbum <input v-model="playlists.form.album" /></label>
+            <label>Año <input v-model="playlists.form.anno" /></label>
+            <label>Género <input v-model="playlists.form.genero" /></label>
           </div>
           <div class="actions">
-            <button :disabled="loading" @click="handleCreate">Crear</button>
+            <button :disabled="playlists.loading.value" @click="playlists.create()">Crear</button>
           </div>
         </div>
       </aside>

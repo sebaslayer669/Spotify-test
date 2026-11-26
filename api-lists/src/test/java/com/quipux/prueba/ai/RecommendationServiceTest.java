@@ -30,7 +30,12 @@ class RecommendationServiceTest {
     void setUp() {
         AiProperties properties = new AiProperties();
         properties.setCacheTtlSeconds(60);
-        recommendationService = new RecommendationService(listaService, aiRecommendationClient, properties);
+        recommendationService = new RecommendationService(
+                listaService,
+                aiRecommendationClient,
+                new RecommendationCache(),
+                properties
+        );
     }
 
     @Test

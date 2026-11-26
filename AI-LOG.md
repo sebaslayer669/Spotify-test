@@ -187,6 +187,24 @@ Usa mocks del cliente IA. No llames al proveedor real.
 
 ---
 
+## Refactor clean code / patrones (post-entregable)
+
+Aplicado sin reescribir el dominio Quipux (JWT, IA, fallback, secretos):
+
+| Patrón / práctica | Dónde | Para qué |
+|-------------------|-------|----------|
+| Mapper (SRP) | `lists/mapper/ListaMapper` | Separar DTO↔entidad del service |
+| Domain Event / Observer | `ListDeletedEvent` → `RecommendationCache` | Invalidar caché al borrar lista sin acoplar services |
+| Strategy (ya existía) | `AiRecommendationClient` | Mock vs proveedor real en tests |
+| Factory methods | `RecommendationsResponse`, `ApiError` | Construcción explícita de respuestas |
+| Enum tipado | `RecommendationSource` | Evitar strings mágicos (`ai`/`fallback`/`cache`) |
+| Caché con TTL | `RecommendationCache` | Menos llamadas al LLM; degradación estable |
+| Composables Vue | `useAuth`, `usePlaylists` | SRP en el front; `App.vue` más delgado |
+
+Tests: **31** verdes tras el refactor (`.\scripts\test.ps1`).
+
+---
+
 ## Reflexión final (obligatoria)
 
 ### ¿Dónde falló, alucinó o se equivocó la IA durante esta prueba?
@@ -213,6 +231,7 @@ Indica de forma general qué porcentaje/partes fueron asistidas por IA vs. escri
 | Equipo + prompts (docs) | ~90% | ~10% (ajuste a enunciado Quipux) |
 | API `/lists` + JWT + Spotify | ~80% | ~20% |
 | Cliente IA + recommendations | ~70% | ~30% (resiliencia/seguridad) |
-| Tests | ~65% | ~35% (MockMvc JWT, parser, Surefire `*IT`) |
+| Tests | ~65% | ~35% (MockMvc JWT, parser, Surefire `*IT`, CRUD) |
 | Front (Vue / consola) | ~75% | ~25% (contrato API, sin keys en browser) |
 | Documentación (AI-LOG/README) | ~50% | ~50% (honestidad autoría + hallazgos) |
+| Refactor clean code / patrones | ~60% | ~40% (Mapper, Cache, eventos, composables) |
