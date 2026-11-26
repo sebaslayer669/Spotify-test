@@ -104,8 +104,6 @@ Debe pasar: AI OK, timeout → FALLBACK, provider exception → FALLBACK.
 | 4.2 | CRUD listas | Formularios crear / listar / ver / borrar |
 | 4.3 | Botón recomendaciones | Muestra IA o mensaje de fallback; **sin** `AI_API_KEY` en el front |
 
-> Hoy el front aún está pendiente en el scaffold. Si entregas solo API+IA+docs, indícalo en README/Autoría IA.
-
 ---
 
 ## 5) Entregables documentales (calificación Senior)

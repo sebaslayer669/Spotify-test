@@ -163,7 +163,7 @@ Detalle de prompts, revisión crítica (Ej. 2) y qué tests añadió la IA vs. a
 - [x] Tests pasando (incl. fallo del proveedor)
 - [x] `AI-LOG.md` completo
 - [x] README con Autoría IA + instrucciones de env
-- [ ] Repo Git con commits evidentes
+- [x] Repo Git con commits evidentes
 - [x] Cliente Postman / REST configurado
 - [x] Front con formularios CRUD + recomendaciones
 
