@@ -102,7 +102,8 @@ onMounted(async () => {
                 </span>
               </div>
               <button
-                class="ghost song-edit"
+                type="button"
+                class="secondary song-edit"
                 :disabled="playlists.loading.value"
                 @click="playlists.startEditSong(i)"
               >
