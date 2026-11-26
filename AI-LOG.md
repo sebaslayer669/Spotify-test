@@ -2,20 +2,18 @@
 
 Instrucciones: Completa esta bitácora mientras resuelves el Módulo de IA. Es un entregable obligatorio. Sé honesto y concreto. Copia los prompts tal cual los usaste. No hay respuestas "incorrectas" por usar IA — lo que evaluamos es tu criterio.
 
-| Campo | Valor |
-|-------|--------|
-| Candidato | _(completar nombre)_ |
-| Nivel | Senior |
-| Fecha | 2026-03-25 |
-| Asistente(s) de IA usado(s) | Cursor (Composer / equipo de agentes) |
+**Candidato:** _____________________  
+**Nivel:** [ ] Staff I/II [ ] Staff III [x] Senior  
+**Fecha:** 2026-11-25  
+**Asistente(s) de IA usado(s):** Cursor (Composer / equipo de agentes)
 
-> Los prompts maestros del equipo están versionados en [`docs/PROMPTS-Y-EQUIPO.md`](docs/PROMPTS-Y-EQUIPO.md). Aquí se pegan los prompts **efectivamente usados** en cada ejercicio.
+> Catálogo de prompts del equipo: [`docs/PROMPTS-Y-EQUIPO.md`](docs/PROMPTS-Y-EQUIPO.md). Abajo solo los prompts **efectivamente usados**.
 
 ---
 
-## Ejercicio 1 — Endpoint con IA integrada
+## Ejercicio 1
 
-### Prompt(s) usado(s)
+### Prompt(s) usado(s):
 
 ```text
 Actúa como Backend Engineer Senior. Implementa:
@@ -38,16 +36,15 @@ Arquitectura:
 - RecommendationService que orquesta lista + IA + fallback
 ```
 
-Catálogo completo del equipo: `docs/PROMPTS-Y-EQUIPO.md` (§3.1–3.10).
-
-### Respuesta / código relevante de la IA
+### Respuesta / código relevante de la IA:
 
 Scaffold generado en `api-lists/`:
+
 - `AiRecommendationClient` + `HttpAiRecommendationClient` + `FallbackAiRecommendationClient`
 - `RecommendationService` (caché + fallback)
 - `RecommendationController`
 - Prompt versionado: `src/main/resources/prompts/recommendations-v1.txt`
-- Secrets vía `application.yml` → `${AI_API_KEY}` / env
+- Secrets vía `application.yml` → `${AI_API_KEY:}` / variables de entorno
 
 ### ¿Qué acepté y por qué?
 
@@ -62,19 +59,17 @@ Scaffold generado en `api-lists/`:
 - No devolver 500 no controlado cuando el LLM falla: se degrada con mensaje claro.
 - Login JWT simplificado (`/auth/login`) solo para la prueba; en producción iría contra usuarios reales.
 
-### Explicación con mis palabras (¿entiendo lo que entrego?)
+### Explicación con mis palabras (¿entiendo lo que entrego?):
 
 El endpoint carga la lista, arma un prompt versionado con un subconjunto de canciones, llama al LLM con timeout y API key por env. Si el proveedor falla, responde recomendaciones locales marcadas como FALLBACK. Los tests mockean `AiRecommendationClient` para probar timeout/excepción sin costo real.
 
 ---
 
-## Ejercicio 2 — Revisión crítica de código generado por IA
+## Ejercicio 2
 
-> Según `Modulo-IA-Senior`: (1) pegar prompt y código generado, (2) revisión Senior con problemas relevantes, (3) describir cambios aplicados sobre la propuesta de la IA.
+### Prompt(s) usado(s):
 
-### Prompt(s) usado(s)
-
-**1) Generación del cliente (para revisar):**
+**Generación del cliente (para revisar):**
 
 ```text
 Genera la implementación COMPLETA en Java/Spring Boot de un cliente que consume un LLM para recomendaciones musicales a partir de una playlist.
@@ -89,7 +84,7 @@ Requisitos:
 - Logging sin imprimir la API key
 ```
 
-**2) Revisión crítica Senior:**
+**Revisión crítica Senior:**
 
 ```text
 Actúa como Senior Security + Backend Reviewer. Revisa el cliente IA.
@@ -98,12 +93,9 @@ testeabilidad (interfaz+mock), fallback/límites de tokens.
 Para cada hallazgo: severidad, evidencia, fix concreto.
 ```
 
-### Respuesta / código generado por la IA (relevante)
-
-Propuesta inicial generada (cliente HTTP + parseo). Archivo actual: `api-lists/src/main/java/com/quipux/prueba/ai/HttpAiRecommendationClient.java`.
+Código relevante generado (fragmento):
 
 ```java
-// Fragmento representativo de lo generado / propuesto por IA
 public List<RecommendationItem> recommend(ListaReproduccion lista) {
     if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
         throw new AiProviderException("AI_API_KEY no configurada");
@@ -117,63 +109,42 @@ public List<RecommendationItem> recommend(ListaReproduccion lista) {
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .build();
     HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-    // ... parseo de choices[0].message.content a List<RecommendationItem>
+    // parseo de choices[0].message.content → List<RecommendationItem>
 }
 ```
 
-También generó/orquestó: `AiRecommendationClient`, `RecommendationService` (fallback + caché), `PromptTemplateLoader`, prompt `recommendations-v1.txt`.
+Archivo: `api-lists/src/main/java/com/quipux/prueba/ai/HttpAiRecommendationClient.java`.
 
-### Análisis / casos faltantes / hallazgos
+### Análisis / casos faltantes / hallazgos:
 
-**Checklist Senior (pasada sobre el código actual):**
+| Severidad | Hallazgo | Fix |
+|-----------|----------|-----|
+| High | Respuesta del modelo con fences markdown | `stripMarkdownFence` / `AiResponseParser` |
+| High | Sin API key no debe tumbar el proceso | `AiProviderException` + fallback en service |
+| High | Prompt injection vía canciones / nombre | `sanitizeField` + system prompt reforzado |
+| Medium | Sin límite de canciones / tokens | `AI_MAX_PROMPT_SONGS` + `AI_MAX_TOKENS` |
+| Medium | Llamadas repetidas al mismo listName | caché TTL |
+| Medium | `recommendations: []` como éxito | excepción → fallback |
+| Medium | Campos de canción ilimitados | `AI_MAX_FIELD_CHARS` |
+| Low | Login demo sin password | documentado (simplificación de prueba) |
 
-| # | Criterio | Resultado |
-|---|----------|-----------|
-| 1 | Secrets / logs con API key | OK — key solo por env; no se loguea |
-| 2 | Timeout real | OK — `HttpRequest.timeout` + connect timeout |
-| 3 | Parseo de basura / markdown | OK — `stripMarkdownFence` + array vacío → excepción → fallback |
-| 4 | Prompt injection (datos de usuario) | Mitigado — `sanitizeField` + system/prompt versionado |
-| 5 | Fallback / límites de tokens | OK — fallback + `max_tokens` (`AI_MAX_TOKENS`) |
-| 6 | Testeabilidad | OK — service mock + parser (`AiResponseParserTest`) + MockMvc (`RecommendationEndpointTest`) |
+Checklist Senior: secrets OK, timeout real OK, parseo defensivo OK, injection mitigada, fallback + límites OK, testeable OK.
 
-**Hallazgos ya corregidos sobre la propuesta de la IA:**
+Pendientes menores (no bloquean): H5 invalidar caché al borrar; H6 default `AI_ENABLED`.
 
-| Severidad | Hallazgo | Fix aplicado |
-|-----------|----------|--------------|
-| High | Respuesta del modelo puede venir con fences markdown | `stripMarkdownFence` en el parser |
-| High | Sin API key no debe tumbar el proceso | `AiProviderException` + fallback en `RecommendationService` |
-| High (H1) | Prompt injection vía canciones / nombre de lista | `sanitizeField` (saltos de línea/controles + truncado) + system prompt reforzado + regla en `recommendations-v1.txt` |
-| Medium | Prompt sin límite de canciones → costo/abuso | `AI_MAX_PROMPT_SONGS` |
-| Medium | Llamadas repetidas al mismo `listName` | caché TTL en `RecommendationService` |
-| Medium (H2) | Sin tope de tokens de respuesta | `max_tokens` en request + `AI_MAX_TOKENS` / `app.ai.max-tokens` |
-| Medium (H3) | `recommendations: []` tratado como éxito | `AiProviderException` → fallback del service |
-| Medium (H4) | Campos de canción ilimitados en el prompt | Truncado por campo (`AI_MAX_FIELD_CHARS`, default 100) |
-| Low | Login demo sin password | documentado como simplificación de prueba |
+### Lo que implementé o corregí yo mismo:
 
-**Hallazgos abiertos (fuera del núcleo Ej. 2/3):**
-
-| ID | Severidad | Hallazgo | Fix propuesto |
-|----|-----------|----------|---------------|
-| H5 | Medium | Caché solo por `listName` (stale / abuso con muchos nombres) | Invalidar al borrar; documentar rate limit / TTL |
-| H6 | Low | `AI_ENABLED` default `true` sin key → siempre fallback | Default local `false` o documentar en README |
-
-**Cerrado en Ejercicio 3:** H7 — tests del parser (markdown / vacío / JSON roto) en `AiResponseParserTest`.
-
-### Lo que implementé o corregí yo mismo
-
-- Interfaz `AiRecommendationClient` + beans condicionales (`AI_ENABLED` / `FallbackAiRecommendationClient`).
-- Fallback en **service** (degradación elegante), no solo en `@ExceptionHandler`.
-- Caché TTL + límite de canciones en el prompt (control de costo/abuso).
-- Limpieza de markdown fences en el parseo.
-- **Paso B (autorizado):** H1 sanitizado/truncado + system prompt; H2 `max_tokens`; H3 rechazo de array vacío; H4 truncado por campo.
-- Tests unitarios: timeout → FALLBACK, provider exception → FALLBACK (`RecommendationServiceTest`).
-- Revisión crítica documentada; H7 cerrado en Ej. 3; H5–H6 opcionales.
+- Interfaz `AiRecommendationClient` + beans condicionales (`AI_ENABLED`).
+- Fallback en **service** (no solo en `@ExceptionHandler`).
+- Caché TTL + límite de canciones + `max_tokens` + truncado/sanitizado (H1–H4).
+- Limpieza de markdown y rechazo de array vacío.
+- Tests de timeout / provider failure.
 
 ---
 
-## Ejercicio 3 — Tests e integración
+## Ejercicio 3
 
-### Prompt(s) usado(s)
+### Prompt(s) usado(s):
 
 ```text
 Actúa como QA Engineer Senior (JUnit 5 + Mockito).
@@ -186,62 +157,33 @@ Genera tests para GET /lists/{listName}/recommendations:
 Usa mocks del cliente IA. No llames al proveedor real.
 ```
 
-### Hallazgos / revisión crítica / riesgos detectados
+### Hallazgos / revisión crítica / riesgos detectados:
 
-**Casos que generó / se implementaron con apoyo de IA:**
+**Casos que generó / implementó la IA:**
 
 | Caso | Dónde | Estado |
 |------|--------|--------|
 | 200 AI OK | `RecommendationServiceTest` + `RecommendationEndpointTest` | OK |
 | Timeout → FALLBACK | ambos | OK |
 | Provider exception → FALLBACK | ambos | OK |
-| 401 sin JWT | `RecommendationEndpointTest` (MockMvc) | OK |
-| 404 lista inexistente | `RecommendationEndpointTest` (MockMvc) | OK |
+| 401 sin JWT | MockMvc | OK |
+| 404 lista inexistente | MockMvc | OK |
 
-**Casos que tuve que añadir / ajustar yo (criterio humano):**
+**Casos que añadí / corregí yo:**
 
-- Extraer `AiResponseParser` y tests de parseo: markdown fence, array vacío, content en blanco, JSON basura (`AiResponseParserTest`) — H7.
-- Renombrar `*IT` → `RecommendationEndpointTest` porque Surefire excluye `*IT.java` por defecto (el test no corría).
-- Perfil `application-test.yml` + `@MockBean AiRecommendationClient` (sin llamar al proveedor real).
-- Test de `sanitizeField` (anti-injection / truncado).
+- `AiResponseParser` + tests (markdown, vacío, JSON basura).
+- Renombrar `*IT` → `RecommendationEndpointTest` (Surefire excluye `*IT`).
+- `application-test.yml` + `@MockBean` (sin proveedor real).
+- Test de `sanitizeField`.
 
-**Aún no cubierto (no bloquea el módulo IA):** test explícito de TTL de caché.
+**Riesgo residual:** sin test explícito de TTL de caché (no bloquea el módulo).
 
-### Decisiones tomadas
+### Decisiones tomadas:
 
-- Unit tests del service (baratos) **más** MockMvc con JWT real emitido por `JwtService` (cubre 401/404 de punta a punta).
-- Mock del cliente IA en integración; nunca llamar al proveedor real en CI/local de tests.
-- Parser aislado en componente propio para poder testear basura del LLM sin HTTP.
-
-### Cumplimiento entregables del módulo (checklist)
-
-| # | Entregable | Estado |
-|---|------------|--------|
-| 1 | `GET /lists/{listName}/recommendations` + JWT | OK |
-| 2 | Cliente IA: credenciales env, errores, timeout, fallback | OK |
-| 3 | Tests pasando (incl. fallo del proveedor) | OK (14 tests) |
-| 4 | `AI-LOG.md` completo | OK |
-| 5 | README Autoría IA + env `AI_API_KEY` | OK |
-
----
-
-## Front (consola para probar la API)
-
-### Prompt usado
-
-```text
-Actúa como Frontend Engineer. Crea una app (Vue 3 + Vite) con:
-- Login JWT contra la API
-- CRUD listas
-- Botón Recomendaciones IA (mostrar source AI/FALLBACK)
-Sin AI_API_KEY en el front; token solo en Authorization.
-```
-
-### Qué hay
-
-- `frontend/` Vue 3: login, listar/crear/borrar, detalle, recomendaciones.
-- Proxy Vite → `:8080`; CORS en API para `localhost:5173`.
-- Arranque: `.\scripts\run-front.ps1` (API arriba con `.\scripts\run-api.ps1`).
+- Unit tests del service (baratos) + MockMvc con JWT real (`JwtService`).
+- Nunca llamar al proveedor real en tests.
+- Parser aislado para probar basura del LLM sin HTTP.
+- Entregables del módulo (endpoint JWT, cliente IA, tests, AI-LOG, README Autoría) → OK (14 tests).
 
 ---
 
@@ -249,19 +191,21 @@ Sin AI_API_KEY en el front; token solo en Authorization.
 
 ### ¿Dónde falló, alucinó o se equivocó la IA durante esta prueba?
 
-- Suele asumir JSON perfecto del LLM; hubo que añadir limpieza de markdown y manejo de content vacío.
-- No contempló prompt injection ni `max_tokens` ni truncado de campos: se aplicaron en Paso B (H1–H4).
-- Puede proponer secrets en `application.yml` o ejemplos Postman con tokens reales: se rechazó.
-- Puede nombrar tests `*IT` sin advertir que Surefire no los ejecuta: hubo que corregirlo a mano.
+- Asumió JSON perfecto del LLM; hubo que limpiar markdown y content vacío.
+- No contempló prompt injection ni `max_tokens` ni truncado de campos (aplicado en revisión Senior).
+- Propuso o sugería secrets/tokens en ejemplos: se rechazó.
+- Nombró tests `*IT` sin advertir que Surefire no los ejecuta.
 
 ### ¿Qué parte del trabajo NO delegarías a la IA y por qué?
 
 - Decisiones de seguridad (dónde viven las keys, qué se loguea, política de fallback).
 - Criterio de aceptación Senior y la revisión crítica del código generado (Ejercicio 2).
 - Validación manual de que el endpoint no tumba la app ante fallo del proveedor.
-- Qué casos de test son obligatorios vs. “nice to have” para la entrega.
+- Priorizar qué casos de test son obligatorios vs. opcionales.
 
-### Autoría
+### Autoría:
+
+Indica de forma general qué porcentaje/partes fueron asistidas por IA vs. escritas a mano.
 
 | Parte | IA | Mano / criterio humano |
 |-------|----|------------------------|
@@ -269,6 +213,6 @@ Sin AI_API_KEY en el front; token solo en Authorization.
 | Equipo + prompts (docs) | ~90% | ~10% (ajuste a enunciado Quipux) |
 | API `/lists` + JWT + Spotify | ~80% | ~20% |
 | Cliente IA + recommendations | ~70% | ~30% (resiliencia/seguridad) |
-| Tests | ~65% | ~35% (MockMvc JWT, parser, fix Surefire `*IT`) |
-| Front Vue | ~75% | ~25% (contrato API, sin keys en browser) |
-| Documentación (AI-LOG/README) | ~50% | ~50% (honestidad autoría + hallazgos reales) |
+| Tests | ~65% | ~35% (MockMvc JWT, parser, Surefire `*IT`) |
+| Front (Vue / consola) | ~75% | ~25% (contrato API, sin keys en browser) |
+| Documentación (AI-LOG/README) | ~50% | ~50% (honestidad autoría + hallazgos) |
