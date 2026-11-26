@@ -1,0 +1,41 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-lists
+  datasource:
+    url: jdbc:h2:mem:listsdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# Secrets SOLO por variables de entorno / override local (nunca valores reales en git)
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-local-dev-only-not-for-prod}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+  spotify:
+    client-id: ${SPOTIFY_CLIENT_ID:}
+    client-secret: ${SPOTIFY_CLIENT_SECRET:}
+    token-url: ${SPOTIFY_TOKEN_URL:https://accounts.spotify.com/api/token}
+    categories-url: ${SPOTIFY_CATEGORIES_URL:https://api.spotify.com/v1/browse/categories}
+  ai:
+    api-key: ${AI_API_KEY:}
+    base-url: ${AI_BASE_URL:https://api.openai.com/v1}
+    model: ${AI_MODEL:gpt-4o-mini}
+    timeout-ms: ${AI_TIMEOUT_MS:3000}
+    max-prompt-songs: ${AI_MAX_PROMPT_SONGS:20}
+    max-tokens: ${AI_MAX_TOKENS:500}
+    max-field-chars: ${AI_MAX_FIELD_CHARS:100}
+    cache-ttl-seconds: ${AI_CACHE_TTL_SECONDS:60}
+    prompt-resource: classpath:prompts/recommendations-v1.txt
+    enabled: ${AI_ENABLED:true}

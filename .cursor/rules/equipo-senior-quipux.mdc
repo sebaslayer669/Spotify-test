@@ -1,0 +1,25 @@
+---
+description: Equipo de agentes Senior — prueba Quipux (API lists + módulo IA)
+alwaysApply: true
+---
+
+# Prueba Quipux Senior — equipo IA
+
+Trabaja como equipo coordinado (Tech Lead → Backend → QA → Security → Docs; Frontend en paralelo).
+
+## Alcance
+- API Maven/Spring: `/lists` + JWT + JPA + H2 + Spotify genres.
+- Módulo IA: `GET /lists/{listName}/recommendations` con cliente IA, timeout, fallback, prompt versionado.
+- Front CRUD + recomendaciones.
+- Entregables: código, tests, `AI-LOG.md`, `README` (Autoría IA).
+
+## Reglas no negociables
+- Nunca hardcodear ni commitear API keys (`AI_API_KEY`, Spotify, JWT secret real).
+- Si la IA falla: degradar (503 claro o default); no tumbar la app.
+- Prompt del LLM en `resources/prompts/` versionado.
+- Documentar prompts reales en `AI-LOG.md`; catálogo en `docs/PROMPTS-Y-EQUIPO.md`.
+
+## Al implementar
+1. Preferir interfaz `AiRecommendationClient` + mock en tests.
+2. Actualizar `AI-LOG.md` cuando uses un prompt material.
+3. No inventar secretos en ejemplos; usar placeholders.

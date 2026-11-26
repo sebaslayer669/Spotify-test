@@ -1,0 +1,12 @@
+app:
+  jwt:
+    secret: test-secret-key-at-least-32-characters-long
+    expiration-ms: 3600000
+  ai:
+    enabled: false
+    api-key: ""
+    timeout-ms: 1000
+    max-prompt-songs: 20
+    max-tokens: 500
+    max-field-chars: 100
+    cache-ttl-seconds: 60

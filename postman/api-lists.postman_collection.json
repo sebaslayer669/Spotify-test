@@ -1,0 +1,79 @@
+{
+  "info": {
+    "name": "Quipux Senior — api-lists",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth — login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"demo\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "Lists — create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Lista 1\",\n  \"descripcion\": \"Lista de canciones de Spotify\",\n  \"canciones\": [\n    {\n      \"titulo\": \"Bohemian Rhapsody\",\n      \"artista\": \"Queen\",\n      \"album\": \"A Night at the Opera\",\n      \"anno\": \"1975\",\n      \"genero\": \"rock\"\n    }\n  ]\n}"
+        },
+        "url": "{{baseUrl}}/lists"
+      }
+    },
+    {
+      "name": "Lists — get all",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/lists"
+      }
+    },
+    {
+      "name": "Lists — get by name",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/lists/Lista 1"
+      }
+    },
+    {
+      "name": "Lists — recommendations (IA)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/lists/Lista 1/recommendations"
+      }
+    },
+    {
+      "name": "Lists — delete",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/lists/Lista 1"
+      }
+    },
+    {
+      "name": "Spotify — genres",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/spotify/genres"
+      }
+    }
+  ]
+}

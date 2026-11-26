@@ -1,0 +1,13 @@
+---
+description: Convenciones Java/Spring para api-lists
+globs: api-lists/**/*
+alwaysApply: false
+---
+
+# api-lists
+
+- Capas: controller → service → repository / client.
+- DTOs en JSON con campos: `nombre`, `descripcion`, `canciones` (`titulo`, `artista`, `album`, `anno`, `genero`).
+- HTTP: POST 201+Location, GET 404, DELETE 204/404, nombre inválido 400.
+- IA: timeout configurable, fallback, sin keys en código.
+- Tests: JUnit 5 + Mockito; mock del proveedor IA para timeout/excepción.
