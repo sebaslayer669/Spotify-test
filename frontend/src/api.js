@@ -115,6 +115,13 @@ export function deleteList(listName) {
   return request(`/lists/${encodeURIComponent(listName)}`, { method: 'DELETE' });
 }
 
+export function addSong(listName, song) {
+  return request(`/lists/${encodeURIComponent(listName)}/canciones`, {
+    method: 'POST',
+    body: JSON.stringify(song)
+  });
+}
+
 export function getRecommendations(listName) {
   return request(`/lists/${encodeURIComponent(listName)}/recommendations`);
 }

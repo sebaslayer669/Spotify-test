@@ -121,6 +121,31 @@ class ListaEndpointTest {
     }
 
     @Test
+    void postCancionAppendsToExistingList() throws Exception {
+        mockMvc.perform(post("/lists")
+                        .header("Authorization", bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validBody("ConCanciones")));
+
+        mockMvc.perform(post("/lists/ConCanciones/canciones")
+                        .header("Authorization", bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "titulo": "Another One Bites the Dust",
+                                  "artista": "Queen",
+                                  "album": "The Game",
+                                  "anno": "1980",
+                                  "genero": "rock"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canciones", hasSize(2)))
+                .andExpect(jsonPath("$.canciones[0].titulo").value("Bohemian Rhapsody"))
+                .andExpect(jsonPath("$.canciones[1].titulo").value("Another One Bites the Dust"));
+    }
+
+    @Test
     void deleteListReturns204() throws Exception {
         mockMvc.perform(post("/lists")
                         .header("Authorization", bearer)

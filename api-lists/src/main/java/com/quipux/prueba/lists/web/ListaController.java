@@ -46,6 +46,14 @@ public class ListaController {
         return listaService.findByName(listName);
     }
 
+    @PostMapping("/{listName}/canciones")
+    public ListaDto addCancion(
+            @PathVariable String listName,
+            @RequestBody ListaDto.CancionDto body
+    ) {
+        return listaService.addCancion(listName, body);
+    }
+
     @DeleteMapping("/{listName}")
     public ResponseEntity<Void> delete(@PathVariable String listName) {
         listaService.delete(listName);

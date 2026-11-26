@@ -2,6 +2,7 @@ package com.quipux.prueba.lists;
 
 import com.quipux.prueba.lists.domain.ListaReproduccion;
 import com.quipux.prueba.lists.event.ListDeletedEvent;
+import com.quipux.prueba.lists.event.ListUpdatedEvent;
 import com.quipux.prueba.lists.mapper.ListaMapper;
 import com.quipux.prueba.lists.repo.ListaReproduccionRepository;
 import com.quipux.prueba.lists.service.ListaService;
@@ -115,6 +116,37 @@ class ListaServiceTest {
         when(repository.findAll()).thenReturn(List.of(a, b));
 
         assertThat(listaService.findAll()).extracting(ListaDto::getNombre).containsExactly("A", "B");
+    }
+
+    @Test
+    void addCancionAppendsWithoutReplacingExisting() {
+        ListaReproduccion entity = new ListaReproduccion();
+        entity.setNombre("Rock");
+        ListaDto.CancionDto existing = new ListaDto.CancionDto();
+        existing.setTitulo("Old");
+        existing.setArtista("A");
+        entity.getCanciones().add(new ListaMapper().toCancion(existing));
+        when(repository.findById("Rock")).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ListaDto.CancionDto neu = new ListaDto.CancionDto();
+        neu.setTitulo("New");
+        neu.setArtista("B");
+
+        ListaDto updated = listaService.addCancion("Rock", neu);
+
+        assertThat(updated.getCanciones()).hasSize(2);
+        assertThat(updated.getCanciones().get(0).getTitulo()).isEqualTo("Old");
+        assertThat(updated.getCanciones().get(1).getTitulo()).isEqualTo("New");
+        verify(events).publishEvent(any(ListUpdatedEvent.class));
+    }
+
+    @Test
+    void addCancionRejectsEmptySong() {
+        ListaDto.CancionDto empty = new ListaDto.CancionDto();
+        assertThatThrownBy(() -> listaService.addCancion("Rock", empty))
+                .isInstanceOf(BadRequestException.class);
+        verify(repository, never()).save(any());
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.quipux.prueba.ai;
 
 import com.quipux.prueba.lists.event.ListDeletedEvent;
+import com.quipux.prueba.lists.event.ListUpdatedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -11,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Caché en memoria con TTL (control de costo/abuso).
- * Se invalida al borrar una lista (Observer vía eventos Spring).
+ * Se invalida al borrar o actualizar una lista (Observer vía eventos Spring).
  */
 @Component
 public class RecommendationCache {
@@ -40,6 +41,11 @@ public class RecommendationCache {
 
     @EventListener
     public void onListDeleted(ListDeletedEvent event) {
+        invalidate(event.listName());
+    }
+
+    @EventListener
+    public void onListUpdated(ListUpdatedEvent event) {
         invalidate(event.listName());
     }
 

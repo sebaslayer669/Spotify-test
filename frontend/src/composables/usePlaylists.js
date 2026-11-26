@@ -1,5 +1,6 @@
 import { computed, reactive, ref } from 'vue';
 import {
+  addSong,
   createList,
   deleteList,
   getList,
@@ -31,6 +32,14 @@ export function usePlaylists() {
     genero: ''
   });
 
+  const songForm = reactive({
+    titulo: '',
+    artista: '',
+    album: '',
+    anno: '',
+    genero: ''
+  });
+
   const songCount = computed(() => selected.value?.canciones?.length || 0);
 
   function resetForm() {
@@ -41,6 +50,14 @@ export function usePlaylists() {
     form.album = '';
     form.anno = '';
     form.genero = '';
+  }
+
+  function resetSongForm() {
+    songForm.titulo = '';
+    songForm.artista = '';
+    songForm.album = '';
+    songForm.anno = '';
+    songForm.genero = '';
   }
 
   function clearSelection() {
@@ -157,6 +174,37 @@ export function usePlaylists() {
     }
   }
 
+  async function addSongToSelected() {
+    if (!selectedName.value) {
+      error.value = 'Selecciona una lista primero';
+      return;
+    }
+    error.value = '';
+    if (!songForm.titulo.trim() && !songForm.artista.trim()) {
+      error.value = 'Indica al menos título o artista';
+      return;
+    }
+    loading.value = true;
+    try {
+      const updated = await addSong(selectedName.value, {
+        titulo: songForm.titulo.trim(),
+        artista: songForm.artista.trim(),
+        album: songForm.album.trim(),
+        anno: songForm.anno.trim(),
+        genero: songForm.genero.trim()
+      });
+      upsertCachedList(updated);
+      selected.value = updated;
+      recommendations.value = null;
+      resetSongForm();
+      await refreshLists();
+    } catch (e) {
+      error.value = e.message;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   return {
     lists,
     selectedName,
@@ -165,12 +213,14 @@ export function usePlaylists() {
     loading,
     error,
     form,
+    songForm,
     songCount,
     clearSelection,
     refreshLists,
     selectList,
     create,
     remove,
-    recommend
+    recommend,
+    addSongToSelected
   };
 }

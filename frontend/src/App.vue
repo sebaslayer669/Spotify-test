@@ -98,6 +98,23 @@ onMounted(async () => {
             <p v-if="!playlists.songCount.value" class="empty">Lista vacía</p>
           </div>
 
+          <div class="divider"></div>
+          <p class="section-label">Agregar canción</p>
+          <div class="form-stack" style="padding: 0">
+            <div class="fields-2">
+              <label>Título <input v-model="playlists.songForm.titulo" /></label>
+              <label>Artista <input v-model="playlists.songForm.artista" /></label>
+              <label>Álbum <input v-model="playlists.songForm.album" /></label>
+              <label>Año <input v-model="playlists.songForm.anno" /></label>
+              <label>Género <input v-model="playlists.songForm.genero" /></label>
+            </div>
+            <div class="actions">
+              <button :disabled="playlists.loading.value" @click="playlists.addSongToSelected()">
+                Agregar a la lista
+              </button>
+            </div>
+          </div>
+
           <template v-if="playlists.recommendations.value">
             <div class="divider"></div>
             <div class="meta-row">

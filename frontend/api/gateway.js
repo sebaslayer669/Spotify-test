@@ -139,6 +139,55 @@ export default async function handler(req, res) {
     return;
   }
 
+  if (op === 'addCancion') {
+    if (req.method !== 'POST') {
+      sendJson(res, 405, { status: 405, error: 'Method Not Allowed', message: 'Usa POST' });
+      return;
+    }
+    const listName = req.query.listName;
+    const lista = store.get(listName);
+    if (!lista) {
+      sendJson(res, 404, {
+        status: 404,
+        error: 'Not Found',
+        message: `Lista no encontrada: ${listName}`
+      });
+      return;
+    }
+    try {
+      const body = await readJson(req);
+      const empty =
+        !(body?.titulo || '').toString().trim() &&
+        !(body?.artista || '').toString().trim() &&
+        !(body?.album || '').toString().trim() &&
+        !(body?.anno || '').toString().trim() &&
+        !(body?.genero || '').toString().trim();
+      if (empty) {
+        sendJson(res, 400, {
+          status: 400,
+          error: 'Bad Request',
+          message: 'Indica al menos título o artista'
+        });
+        return;
+      }
+      const song = {
+        titulo: (body.titulo || '').toString(),
+        artista: (body.artista || '').toString(),
+        album: (body.album || '').toString(),
+        anno: (body.anno || '').toString(),
+        genero: (body.genero || '').toString()
+      };
+      const canciones = Array.isArray(lista.canciones) ? [...lista.canciones, song] : [song];
+      const updated = { ...lista, canciones };
+      store.set(listName, updated);
+      persistStore();
+      sendJson(res, 200, updated);
+    } catch {
+      sendJson(res, 400, { status: 400, error: 'Bad Request', message: 'JSON inválido' });
+    }
+    return;
+  }
+
   if (op === 'recommendations') {
     if (req.method !== 'GET') {
       sendJson(res, 405, { status: 405, error: 'Method Not Allowed', message: 'Usa GET' });

@@ -2,6 +2,7 @@ package com.quipux.prueba.lists.service;
 
 import com.quipux.prueba.lists.domain.ListaReproduccion;
 import com.quipux.prueba.lists.event.ListDeletedEvent;
+import com.quipux.prueba.lists.event.ListUpdatedEvent;
 import com.quipux.prueba.lists.mapper.ListaMapper;
 import com.quipux.prueba.lists.repo.ListaReproduccionRepository;
 import com.quipux.prueba.lists.web.ListaDto;
@@ -50,6 +51,27 @@ public class ListaService {
     }
 
     @Transactional
+    public ListaDto addCancion(String listName, ListaDto.CancionDto cancionDto) {
+        if (cancionDto == null) {
+            throw new BadRequestException("La canción no es válida");
+        }
+        boolean empty =
+                isBlank(cancionDto.getTitulo())
+                        && isBlank(cancionDto.getArtista())
+                        && isBlank(cancionDto.getAlbum())
+                        && isBlank(cancionDto.getAnno())
+                        && isBlank(cancionDto.getGenero());
+        if (empty) {
+            throw new BadRequestException("Indica al menos título o artista");
+        }
+        ListaReproduccion entity = require(listName);
+        entity.getCanciones().add(mapper.toCancion(cancionDto));
+        ListaDto updated = mapper.toDto(repository.save(entity));
+        events.publishEvent(new ListUpdatedEvent(listName));
+        return updated;
+    }
+
+    @Transactional
     public void delete(String listName) {
         if (!repository.existsById(listName)) {
             throw new NotFoundException("Lista no encontrada: " + listName);
@@ -68,5 +90,9 @@ public class ListaService {
         if (nombre == null || nombre.isBlank()) {
             throw new BadRequestException("El nombre de la lista no es válido");
         }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
