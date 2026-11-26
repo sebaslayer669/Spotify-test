@@ -1,6 +1,6 @@
 const TOKEN_KEY = 'quipux_jwt';
 
-/** En Vercel/producción: VITE_API_BASE_URL=https://tu-api.example.com (sin slash final). */
+/** En Vercel: VITE_API_BASE_URL = URL pública de Spring (NO la URL de Vercel). */
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 export function getToken() {
@@ -13,6 +13,30 @@ export function setToken(token) {
 
 export function clearToken() {
   sessionStorage.removeItem(TOKEN_KEY);
+}
+
+function assertApiConfigured() {
+  if (!import.meta.env.PROD) {
+    return;
+  }
+  if (!API_BASE) {
+    throw new Error(
+      'Falta VITE_API_BASE_URL en Vercel (URL de la API Spring, no del front). Redeploy tras guardarla.'
+    );
+  }
+  try {
+    const apiHost = new URL(API_BASE).host;
+    if (typeof window !== 'undefined' && apiHost === window.location.host) {
+      throw new Error(
+        'VITE_API_BASE_URL apunta al mismo host del front. Debe ser la URL del backend Spring.'
+      );
+    }
+  } catch (e) {
+    if (e instanceof Error && e.message.includes('VITE_API_BASE_URL')) {
+      throw e;
+    }
+    throw new Error('VITE_API_BASE_URL no es una URL válida');
+  }
 }
 
 function toErrorMessage(value, fallback) {
@@ -35,7 +59,24 @@ function toErrorMessage(value, fallback) {
   return String(value);
 }
 
+function statusMessage(status, data) {
+  if (status === 405) {
+    return (
+      'HTTP 405: el POST no llegó a Spring. En Vercel configura VITE_API_BASE_URL ' +
+      'con la URL de la API (ej. https://tu-api.onrender.com) y vuelve a desplegar.'
+    );
+  }
+  if (status === 404) {
+    return (
+      'HTTP 404: ruta no encontrada en el host configurado. Revisa VITE_API_BASE_URL.'
+    );
+  }
+  return toErrorMessage(data?.message ?? data?.error, `HTTP ${status}`);
+}
+
 async function request(path, options = {}) {
+  assertApiConfigured();
+
   const headers = {
     Accept: 'application/json',
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
@@ -73,11 +114,7 @@ async function request(path, options = {}) {
   }
 
   if (!response.ok) {
-    const message = toErrorMessage(
-      data?.message ?? data?.error,
-      `HTTP ${response.status}`
-    );
-    const error = new Error(message);
+    const error = new Error(statusMessage(response.status, data));
     error.status = response.status;
     error.data = data;
     throw error;
