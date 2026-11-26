@@ -1,3 +1,10 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/auth/(.*)", "destination": "/api/auth/$1" },
+    { "source": "/lists", "destination": "/api/lists" },
+    { "source": "/lists/:listName/recommendations", "destination": "/api/lists/:listName/recommendations" },
+    { "source": "/lists/:listName", "destination": "/api/lists/:listName" },
+    { "source": "/spotify/(.*)", "destination": "/api/spotify/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

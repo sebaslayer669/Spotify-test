@@ -93,25 +93,32 @@ Flujo: login JWT → crear/listar/ver/borrar listas → **Recomendaciones IA** (
 
 El front **no** conoce `AI_API_KEY`; solo envía `Authorization: Bearer <jwt>`. En local, Vite hace proxy a `:8080`.
 
-### Deploy front en Vercel
+### Deploy en Vercel (mismo repo)
 
-Vercel solo hospeda el **frontend**. La API Spring debe estar en otro host (Render, Railway, Fly.io, VPS, etc.).
+Vercel **no ejecuta** Spring Boot. En este monorepo:
 
-En el proyecto Vercel (Root Directory: `frontend`):
+| Pieza | Dónde | Rol |
+|-------|--------|-----|
+| `api-lists/` | Local / JVM | **API real** de la prueba (Maven, JWT, IA, tests) |
+| `frontend/api/` | Vercel serverless | Adaptador demo con el mismo contrato HTTP para el front desplegado |
+
+Configuración del proyecto Vercel:
+
+- **Root Directory:** `frontend`
+- Framework: Vite
+- Build: `npm run build`
+- Output: `dist`
+
+Variables opcionales en Vercel:
 
 | Variable | Valor | Notas |
 |----------|-------|--------|
-| `VITE_API_BASE_URL` | `https://tu-api.ejemplo.com` | **Obligatoria** en Vercel. Sin slash final. Sin esta var el login falla. |
+| `JWT_SECRET` | secreto | Mismo criterio que en Spring; no exponer en el front |
+| `VITE_API_BASE_URL` | _(vacío)_ | Déjala vacía: el front usa `/auth` y `/lists`; `vercel.json` reescribe a `/api/*` |
 
-En el **servidor de la API**:
+No hace falta `VITE_API_BASE_URL` para el deploy estándar del monorepo.
 
-| Variable | Valor | Notas |
-|----------|-------|--------|
-| `CORS_ALLOWED_ORIGINS` | `https://tu-app.vercel.app` | Puedes sumar local: `http://localhost:5173,https://tu-app.vercel.app` |
-| `AI_ENABLED` | `false` o `true` | `false` = mock local; `true` requiere `AI_API_KEY` |
-| `JWT_SECRET` | secreto fuerte | No uses el default de demo en producción |
-
-Build Vercel: Framework Vite, Output `dist`, Install `npm install`, Build `npm run build`.
+Local: `.\scripts\run-api.ps1` (Spring) + `.\scripts\run-front.ps1` (Vite proxy → `:8080`).
 
 ### Contrato base `/lists`
 
