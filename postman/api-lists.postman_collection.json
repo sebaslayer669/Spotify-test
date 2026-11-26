@@ -82,6 +82,29 @@
       }
     },
     {
+      "name": "Lists — update list",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Lista 1\",\n  \"descripcion\": \"Descripción editada\"\n}"
+        },
+        "url": "{{baseUrl}}/lists/Lista 1"
+      }
+    },
+    {
+      "name": "Lists — delete song",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/lists/Lista 1/canciones/0"
+      }
+    },
+    {
       "name": "Lists — recommendations (IA)",
       "request": {
         "method": "GET",

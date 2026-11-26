@@ -83,6 +83,24 @@ onMounted(async () => {
             <h1>{{ playlists.selected.value.nombre }}</h1>
             <p v-if="playlists.selected.value.descripcion">{{ playlists.selected.value.descripcion }}</p>
           </div>
+
+          <p class="section-label">Datos de la lista</p>
+          <div class="form-stack" style="padding: 0; margin-bottom: 1rem">
+            <label>
+              Nombre
+              <input v-model="playlists.listForm.nombre" />
+            </label>
+            <label>
+              Descripción
+              <textarea v-model="playlists.listForm.descripcion" rows="2" />
+            </label>
+            <div class="actions">
+              <button :disabled="playlists.loading.value" @click="playlists.saveListInfo()">
+                Guardar lista
+              </button>
+            </div>
+          </div>
+
           <div class="meta-row">
             <span class="badge">{{ playlists.songCount.value }} canciones</span>
             <button :disabled="playlists.loading.value" @click="playlists.recommend()">Recomendar</button>
@@ -101,14 +119,24 @@ onMounted(async () => {
                   {{ [song.artista, song.album, song.genero, song.anno].filter(Boolean).join(' · ') }}
                 </span>
               </div>
-              <button
-                type="button"
-                class="secondary song-edit"
-                :disabled="playlists.loading.value"
-                @click="playlists.startEditSong(i)"
-              >
-                Editar
-              </button>
+              <div class="song-actions">
+                <button
+                  type="button"
+                  class="secondary song-edit"
+                  :disabled="playlists.loading.value"
+                  @click="playlists.startEditSong(i)"
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  class="danger-ghost song-edit"
+                  :disabled="playlists.loading.value"
+                  @click="playlists.removeSong(i)"
+                >
+                  Eliminar
+                </button>
+              </div>
             </div>
             <p v-if="!playlists.songCount.value" class="empty">Lista vacía</p>
           </div>

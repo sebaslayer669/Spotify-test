@@ -12,6 +12,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -59,16 +60,47 @@ public class ListaService {
     }
 
     @Transactional
+    public ListaDto update(String listName, ListaDto dto) {
+        ListaReproduccion entity = require(listName);
+        String newNombre = dto.getNombre() != null ? dto.getNombre().trim() : listName;
+        validateNombre(newNombre);
+        String newDescripcion = dto.getDescripcion() != null ? dto.getDescripcion() : entity.getDescripcion();
+
+        if (!newNombre.equals(listName)) {
+            if (repository.existsById(newNombre)) {
+                throw new BadRequestException("Ya existe una lista con ese nombre");
+            }
+            ListaReproduccion renamed = new ListaReproduccion();
+            renamed.setNombre(newNombre);
+            renamed.setDescripcion(newDescripcion);
+            renamed.setCanciones(new ArrayList<>(entity.getCanciones()));
+            repository.deleteById(listName);
+            events.publishEvent(new ListDeletedEvent(listName));
+            ListaDto saved = mapper.toDto(repository.save(renamed));
+            events.publishEvent(new ListUpdatedEvent(newNombre));
+            return saved;
+        }
+
+        entity.setDescripcion(newDescripcion);
+        return persistUpdated(listName, entity);
+    }
+
+    @Transactional
     public ListaDto updateCancion(String listName, int index, ListaDto.CancionDto cancionDto) {
         requireValidCancion(cancionDto);
-        if (index < 0) {
-            throw new BadRequestException("Índice de canción inválido");
-        }
+        requireValidIndex(index);
         ListaReproduccion entity = require(listName);
-        if (index >= entity.getCanciones().size()) {
-            throw new NotFoundException("Canción no encontrada en la lista");
-        }
+        requireSongIndex(entity, index);
         entity.getCanciones().set(index, mapper.toCancion(cancionDto));
+        return persistUpdated(listName, entity);
+    }
+
+    @Transactional
+    public ListaDto deleteCancion(String listName, int index) {
+        requireValidIndex(index);
+        ListaReproduccion entity = require(listName);
+        requireSongIndex(entity, index);
+        entity.getCanciones().remove(index);
         return persistUpdated(listName, entity);
     }
 
@@ -105,6 +137,18 @@ public class ListaService {
                         && isBlank(cancionDto.getGenero());
         if (empty) {
             throw new BadRequestException("Indica al menos título o artista");
+        }
+    }
+
+    private static void requireValidIndex(int index) {
+        if (index < 0) {
+            throw new BadRequestException("Índice de canción inválido");
+        }
+    }
+
+    private static void requireSongIndex(ListaReproduccion entity, int index) {
+        if (index >= entity.getCanciones().size()) {
+            throw new NotFoundException("Canción no encontrada en la lista");
         }
     }
 

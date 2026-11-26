@@ -47,6 +47,14 @@ public class ListaController {
         return listaService.findByName(listName);
     }
 
+    @PutMapping("/{listName}")
+    public ListaDto update(
+            @PathVariable String listName,
+            @RequestBody ListaDto body
+    ) {
+        return listaService.update(listName, body);
+    }
+
     @PostMapping("/{listName}/canciones")
     public ListaDto addCancion(
             @PathVariable String listName,
@@ -62,6 +70,14 @@ public class ListaController {
             @RequestBody ListaDto.CancionDto body
     ) {
         return listaService.updateCancion(listName, index, body);
+    }
+
+    @DeleteMapping("/{listName}/canciones/{index}")
+    public ListaDto deleteCancion(
+            @PathVariable String listName,
+            @PathVariable int index
+    ) {
+        return listaService.deleteCancion(listName, index);
     }
 
     @DeleteMapping("/{listName}")

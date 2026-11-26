@@ -121,6 +121,57 @@ export default async function handler(req, res) {
       sendJson(res, 200, lista);
       return;
     }
+    if (req.method === 'PUT') {
+      if (!lista) {
+        sendJson(res, 404, {
+          status: 404,
+          error: 'Not Found',
+          message: `Lista no encontrada: ${listName}`
+        });
+        return;
+      }
+      try {
+        const body = await readJson(req);
+        const newNombre = (body?.nombre != null ? String(body.nombre) : listName).trim();
+        if (!newNombre) {
+          sendJson(res, 400, {
+            status: 400,
+            error: 'Bad Request',
+            message: 'El nombre de la lista no es válido'
+          });
+          return;
+        }
+        const newDescripcion =
+          body?.descripcion != null ? String(body.descripcion) : lista.descripcion || '';
+        if (newNombre !== listName) {
+          if (store.has(newNombre)) {
+            sendJson(res, 400, {
+              status: 400,
+              error: 'Bad Request',
+              message: 'Ya existe una lista con ese nombre'
+            });
+            return;
+          }
+          const renamed = {
+            nombre: newNombre,
+            descripcion: newDescripcion,
+            canciones: Array.isArray(lista.canciones) ? [...lista.canciones] : []
+          };
+          store.delete(listName);
+          store.set(newNombre, renamed);
+          persistStore();
+          sendJson(res, 200, renamed);
+          return;
+        }
+        const updated = { ...lista, descripcion: newDescripcion };
+        store.set(listName, updated);
+        persistStore();
+        sendJson(res, 200, updated);
+      } catch {
+        sendJson(res, 400, { status: 400, error: 'Bad Request', message: 'JSON inválido' });
+      }
+      return;
+    }
     if (req.method === 'DELETE') {
       if (!lista) {
         sendJson(res, 404, {
@@ -140,10 +191,6 @@ export default async function handler(req, res) {
   }
 
   if (op === 'updateCancion') {
-    if (req.method !== 'PUT') {
-      sendJson(res, 405, { status: 405, error: 'Method Not Allowed', message: 'Usa PUT' });
-      return;
-    }
     const listName = req.query.listName;
     const index = Number.parseInt(String(req.query.index ?? ''), 10);
     const lista = store.get(listName);
@@ -170,6 +217,20 @@ export default async function handler(req, res) {
         error: 'Not Found',
         message: 'Canción no encontrada en la lista'
       });
+      return;
+    }
+
+    if (req.method === 'DELETE') {
+      canciones.splice(index, 1);
+      const updated = { ...lista, canciones };
+      store.set(listName, updated);
+      persistStore();
+      sendJson(res, 200, updated);
+      return;
+    }
+
+    if (req.method !== 'PUT') {
+      sendJson(res, 405, { status: 405, error: 'Method Not Allowed', message: 'Usa PUT o DELETE' });
       return;
     }
     try {

@@ -3,9 +3,11 @@ import {
   addSong,
   createList,
   deleteList,
+  deleteSong,
   getList,
   getRecommendations,
   listLists,
+  updateList,
   updateSong
 } from '../api';
 import {
@@ -44,6 +46,11 @@ export function usePlaylists() {
     genero: ''
   });
 
+  const listForm = reactive({
+    nombre: '',
+    descripcion: ''
+  });
+
   const songForm = reactive(blankSong());
 
   const songCount = computed(() => selected.value?.canciones?.length || 0);
@@ -64,6 +71,11 @@ export function usePlaylists() {
     editingIndex.value = null;
   }
 
+  function syncListForm(lista) {
+    listForm.nombre = lista?.nombre || '';
+    listForm.descripcion = lista?.descripcion || '';
+  }
+
   function clearSelection() {
     lists.value = [];
     selectedName.value = '';
@@ -71,6 +83,7 @@ export function usePlaylists() {
     recommendations.value = null;
     error.value = '';
     resetSongForm();
+    syncListForm(null);
   }
 
   async function refreshLists() {
@@ -84,6 +97,7 @@ export function usePlaylists() {
       selected.value = null;
       recommendations.value = null;
       resetSongForm();
+      syncListForm(null);
     }
   }
 
@@ -104,13 +118,16 @@ export function usePlaylists() {
       if (!resolved) {
         error.value = `Lista no encontrada: ${name}`;
         selected.value = null;
+        syncListForm(null);
         return;
       }
       selected.value = resolved;
+      syncListForm(resolved);
       upsertCachedList(resolved);
     } catch (e) {
       error.value = e.message;
       selected.value = null;
+      syncListForm(null);
     } finally {
       loading.value = false;
     }
@@ -144,8 +161,43 @@ export function usePlaylists() {
       await refreshLists();
       selectedName.value = created.nombre;
       selected.value = created;
+      syncListForm(created);
       recommendations.value = null;
       resetSongForm();
+    } catch (e) {
+      error.value = e.message;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function saveListInfo() {
+    if (!selectedName.value) {
+      error.value = 'Selecciona una lista primero';
+      return;
+    }
+    error.value = '';
+    const nombre = listForm.nombre.trim();
+    if (!nombre) {
+      error.value = 'Indica un nombre para la lista';
+      return;
+    }
+    loading.value = true;
+    try {
+      const previousName = selectedName.value;
+      const updated = await updateList(previousName, {
+        nombre,
+        descripcion: listForm.descripcion.trim()
+      });
+      if (previousName !== updated.nombre) {
+        removeCachedList(previousName);
+      }
+      upsertCachedList(updated);
+      selectedName.value = updated.nombre;
+      selected.value = updated;
+      syncListForm(updated);
+      recommendations.value = null;
+      await refreshLists();
     } catch (e) {
       error.value = e.message;
     } finally {
@@ -161,7 +213,6 @@ export function usePlaylists() {
       try {
         await deleteList(name);
       } catch (e) {
-        // 404: ya no está en el servidor (caché fantasma tras reinicio H2) → limpiar UI igual
         if (e.status !== 404) throw e;
       }
       removeCachedList(name);
@@ -170,6 +221,7 @@ export function usePlaylists() {
         selected.value = null;
         recommendations.value = null;
         resetSongForm();
+        syncListForm(null);
       }
       error.value = '';
       await refreshLists();
@@ -274,6 +326,31 @@ export function usePlaylists() {
     }
   }
 
+  async function removeSong(index) {
+    if (!selectedName.value) return;
+    const song = selected.value?.canciones?.[index];
+    const label = song?.titulo || song?.artista || `#${index + 1}`;
+    if (!confirm(`¿Eliminar la canción “${label}”?`)) return;
+    error.value = '';
+    loading.value = true;
+    try {
+      const updated = await deleteSong(selectedName.value, index);
+      upsertCachedList(updated);
+      selected.value = updated;
+      recommendations.value = null;
+      if (editingIndex.value === index) {
+        resetSongForm();
+      } else if (editingIndex.value != null && editingIndex.value > index) {
+        editingIndex.value -= 1;
+      }
+      await refreshLists();
+    } catch (e) {
+      error.value = e.message;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   return {
     lists,
     selectedName,
@@ -282,6 +359,7 @@ export function usePlaylists() {
     loading,
     error,
     form,
+    listForm,
     songForm,
     songCount,
     editingIndex,
@@ -290,11 +368,13 @@ export function usePlaylists() {
     refreshLists,
     selectList,
     create,
+    saveListInfo,
     remove,
     recommend,
     startEditSong,
     cancelEditSong,
     addSongToSelected,
-    saveEditedSong
+    saveEditedSong,
+    removeSong
   };
 }

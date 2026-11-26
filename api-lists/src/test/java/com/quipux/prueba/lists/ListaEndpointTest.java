@@ -147,6 +147,56 @@ class ListaEndpointTest {
     }
 
     @Test
+    void putListaUpdatesDescripcion() throws Exception {
+        mockMvc.perform(post("/lists")
+                        .header("Authorization", bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validBody("MetaLista")));
+
+        mockMvc.perform(put("/lists/MetaLista")
+                        .header("Authorization", bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "MetaLista",
+                                  "descripcion": "Descripción editada"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.descripcion").value("Descripción editada"))
+                .andExpect(jsonPath("$.canciones", hasSize(1)));
+    }
+
+    @Test
+    void deleteCancionRemovesSongAtIndex() throws Exception {
+        mockMvc.perform(post("/lists")
+                        .header("Authorization", bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validBody("BorrarCancion")));
+
+        mockMvc.perform(post("/lists/BorrarCancion/canciones")
+                        .header("Authorization", bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "titulo": "Extra",
+                                  "artista": "Band",
+                                  "album": "",
+                                  "anno": "",
+                                  "genero": "rock"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canciones", hasSize(2)));
+
+        mockMvc.perform(delete("/lists/BorrarCancion/canciones/0")
+                        .header("Authorization", bearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canciones", hasSize(1)))
+                .andExpect(jsonPath("$.canciones[0].titulo").value("Extra"));
+    }
+
+    @Test
     void putCancionUpdatesSongAtIndex() throws Exception {
         mockMvc.perform(post("/lists")
                         .header("Authorization", bearer)

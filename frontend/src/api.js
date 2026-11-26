@@ -115,6 +115,13 @@ export function deleteList(listName) {
   return request(`/lists/${encodeURIComponent(listName)}`, { method: 'DELETE' });
 }
 
+export function updateList(listName, payload) {
+  return request(`/lists/${encodeURIComponent(listName)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
 export function addSong(listName, song) {
   return request(`/lists/${encodeURIComponent(listName)}/canciones`, {
     method: 'POST',
@@ -126,6 +133,12 @@ export function updateSong(listName, index, song) {
   return request(`/lists/${encodeURIComponent(listName)}/canciones/${index}`, {
     method: 'PUT',
     body: JSON.stringify(song)
+  });
+}
+
+export function deleteSong(listName, index) {
+  return request(`/lists/${encodeURIComponent(listName)}/canciones/${index}`, {
+    method: 'DELETE'
   });
 }
 

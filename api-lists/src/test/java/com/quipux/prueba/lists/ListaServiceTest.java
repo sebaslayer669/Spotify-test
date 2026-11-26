@@ -178,6 +178,47 @@ class ListaServiceTest {
     }
 
     @Test
+    void updateListaChangesDescripcion() {
+        ListaReproduccion entity = new ListaReproduccion();
+        entity.setNombre("Rock");
+        entity.setDescripcion("Old");
+        when(repository.findById("Rock")).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ListaDto body = new ListaDto();
+        body.setNombre("Rock");
+        body.setDescripcion("New desc");
+
+        ListaDto updated = listaService.update("Rock", body);
+
+        assertThat(updated.getDescripcion()).isEqualTo("New desc");
+        verify(events).publishEvent(any(ListUpdatedEvent.class));
+    }
+
+    @Test
+    void deleteCancionRemovesSongAtIndex() {
+        ListaReproduccion entity = new ListaReproduccion();
+        entity.setNombre("Rock");
+        ListaMapper mapper = new ListaMapper();
+        ListaDto.CancionDto first = new ListaDto.CancionDto();
+        first.setTitulo("Keep");
+        first.setArtista("A");
+        ListaDto.CancionDto second = new ListaDto.CancionDto();
+        second.setTitulo("Drop");
+        second.setArtista("B");
+        entity.getCanciones().add(mapper.toCancion(first));
+        entity.getCanciones().add(mapper.toCancion(second));
+        when(repository.findById("Rock")).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ListaDto updated = listaService.deleteCancion("Rock", 1);
+
+        assertThat(updated.getCanciones()).hasSize(1);
+        assertThat(updated.getCanciones().get(0).getTitulo()).isEqualTo("Keep");
+        verify(events).publishEvent(any(ListUpdatedEvent.class));
+    }
+
+    @Test
     void updateCancionThrowsWhenIndexMissing() {
         ListaReproduccion entity = new ListaReproduccion();
         entity.setNombre("Rock");
