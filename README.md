@@ -91,7 +91,27 @@ Justificación: Vue 3 + Vite es ligero para una consola de prueba y no requiere 
 
 Flujo: login JWT → crear/listar/ver/borrar listas → **Recomendaciones IA** (muestra `source=AI` o `FALLBACK`).
 
-El front **no** conoce `AI_API_KEY`; solo envía `Authorization: Bearer <jwt>`. Vite hace proxy a `:8080`.
+El front **no** conoce `AI_API_KEY`; solo envía `Authorization: Bearer <jwt>`. En local, Vite hace proxy a `:8080`.
+
+### Deploy front en Vercel
+
+Vercel solo hospeda el **frontend**. La API Spring debe estar en otro host (Render, Railway, Fly.io, VPS, etc.).
+
+En el proyecto Vercel (Root Directory: `frontend`):
+
+| Variable | Valor | Notas |
+|----------|-------|--------|
+| `VITE_API_BASE_URL` | `https://tu-api.ejemplo.com` | **Obligatoria** en Vercel. Sin slash final. Sin esta var el login falla. |
+
+En el **servidor de la API**:
+
+| Variable | Valor | Notas |
+|----------|-------|--------|
+| `CORS_ALLOWED_ORIGINS` | `https://tu-app.vercel.app` | Puedes sumar local: `http://localhost:5173,https://tu-app.vercel.app` |
+| `AI_ENABLED` | `false` o `true` | `false` = mock local; `true` requiere `AI_API_KEY` |
+| `JWT_SECRET` | secreto fuerte | No uses el default de demo en producción |
+
+Build Vercel: Framework Vite, Output `dist`, Install `npm install`, Build `npm run build`.
 
 ### Contrato base `/lists`
 

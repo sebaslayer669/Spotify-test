@@ -1,5 +1,8 @@
 const TOKEN_KEY = 'quipux_jwt';
 
+/** En Vercel/producción: VITE_API_BASE_URL=https://tu-api.example.com (sin slash final). */
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 export function getToken() {
   return sessionStorage.getItem(TOKEN_KEY);
 }
@@ -10,6 +13,26 @@ export function setToken(token) {
 
 export function clearToken() {
   sessionStorage.removeItem(TOKEN_KEY);
+}
+
+function toErrorMessage(value, fallback) {
+  if (value == null || value === '') {
+    return fallback;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'object') {
+    if (typeof value.message === 'string') {
+      return value.message;
+    }
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return fallback;
+    }
+  }
+  return String(value);
 }
 
 async function request(path, options = {}) {
@@ -23,7 +46,18 @@ async function request(path, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(path, { ...options, headers });
+  const url = `${API_BASE}${path}`;
+  let response;
+  try {
+    response = await fetch(url, { ...options, headers });
+  } catch {
+    throw new Error(
+      API_BASE
+        ? `No se pudo conectar con la API (${API_BASE})`
+        : 'API no configurada: define VITE_API_BASE_URL en Vercel'
+    );
+  }
+
   if (response.status === 204) {
     return null;
   }
@@ -34,12 +68,15 @@ async function request(path, options = {}) {
     try {
       data = JSON.parse(text);
     } catch {
-      data = { message: text };
+      data = { message: text.slice(0, 200) };
     }
   }
 
   if (!response.ok) {
-    const message = data?.message || data?.error || `HTTP ${response.status}`;
+    const message = toErrorMessage(
+      data?.message ?? data?.error,
+      `HTTP ${response.status}`
+    );
     const error = new Error(message);
     error.status = response.status;
     error.data = data;

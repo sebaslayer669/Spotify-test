@@ -43,7 +43,7 @@ async function handleLogin() {
     token.value = data.accessToken;
     await refreshLists();
   } catch (e) {
-    error.value = e.message || 'No se pudo iniciar sesión';
+    error.value = typeof e?.message === 'string' ? e.message : 'No se pudo iniciar sesión';
   } finally {
     loading.value = false;
   }

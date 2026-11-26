@@ -20,6 +20,9 @@ spring:
 
 # Secrets SOLO por variables de entorno / override local (nunca valores reales en git)
 app:
+  cors:
+    # Lista separada por comas. Incluye tu URL de Vercel en producción.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
   jwt:
     secret: ${JWT_SECRET:change-me-local-dev-only-not-for-prod}
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}

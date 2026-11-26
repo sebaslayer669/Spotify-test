@@ -21,9 +21,11 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final CorsProperties corsProperties;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, CorsProperties corsProperties) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.corsProperties = corsProperties;
     }
 
     @Bean
@@ -46,14 +48,11 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /** Permite el front local (Vite). No incluye API keys de IA en el navegador. */
+    /** Orígenes del front (local + Vercel vía CORS_ALLOWED_ORIGINS). Sin AI keys en el browser. */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://127.0.0.1:5173"
-        ));
+        config.setAllowedOrigins(corsProperties.resolvedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
