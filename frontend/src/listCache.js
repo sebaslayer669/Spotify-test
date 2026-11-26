@@ -32,27 +32,43 @@ export function clearListCache() {
   sessionStorage.removeItem(KEY);
 }
 
-/** Une respuesta API + caché local (la caché gana si trae más canciones). */
+/**
+ * Une respuesta API + caché local.
+ * La API es la fuente de verdad de qué listas existen;
+ * la caché solo puede enriquecer canciones de listas que sí están en la API
+ * (p. ej. en Vercel/multi-lambda con pérdida parcial de canciones).
+ */
 export function mergeLists(apiLists) {
   const cache = readListCache();
   const byName = {};
+  const alive = new Set();
+
   for (const item of apiLists || []) {
-    byName[item.nombre] = item;
-  }
-  for (const [nombre, cached] of Object.entries(cache)) {
-    const current = byName[nombre];
+    if (!item?.nombre) continue;
+    alive.add(item.nombre);
+    const cached = cache[item.nombre];
     const cachedSongs = cached?.canciones?.length || 0;
-    const currentSongs = current?.canciones?.length || 0;
-    if (!current || cachedSongs > currentSongs) {
-      byName[nombre] = cached;
-    }
+    const currentSongs = item?.canciones?.length || 0;
+    byName[item.nombre] = cached && cachedSongs > currentSongs ? cached : item;
   }
+
+  // Purga fantasmas: listas solo en caché (p. ej. tras reiniciar H2)
+  const pruned = {};
+  for (const nombre of alive) {
+    if (byName[nombre]) pruned[nombre] = byName[nombre];
+  }
+  writeListCache(pruned);
+
   return Object.values(byName);
 }
 
 export function resolveList(apiList, nombre) {
   const cached = readListCache()[nombre];
-  if (!apiList) return cached || null;
+  if (!apiList) {
+    // No inventar lista fantasma si el servidor ya no la tiene
+    if (cached) removeCachedList(nombre);
+    return null;
+  }
   const apiSongs = apiList.canciones?.length || 0;
   const cachedSongs = cached?.canciones?.length || 0;
   if (cached && cachedSongs > apiSongs) {

@@ -79,6 +79,12 @@ export function usePlaylists() {
     for (const item of lists.value) {
       upsertCachedList(item);
     }
+    if (selectedName.value && !lists.value.some((l) => l.nombre === selectedName.value)) {
+      selectedName.value = '';
+      selected.value = null;
+      recommendations.value = null;
+      resetSongForm();
+    }
   }
 
   async function selectList(name) {
@@ -152,7 +158,12 @@ export function usePlaylists() {
     if (!confirm(`¿Eliminar “${name}”?`)) return;
     loading.value = true;
     try {
-      await deleteList(name);
+      try {
+        await deleteList(name);
+      } catch (e) {
+        // 404: ya no está en el servidor (caché fantasma tras reinicio H2) → limpiar UI igual
+        if (e.status !== 404) throw e;
+      }
       removeCachedList(name);
       if (selectedName.value === name) {
         selectedName.value = '';
@@ -160,6 +171,7 @@ export function usePlaylists() {
         recommendations.value = null;
         resetSongForm();
       }
+      error.value = '';
       await refreshLists();
     } catch (e) {
       error.value = e.message;
